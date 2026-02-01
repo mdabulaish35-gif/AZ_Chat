@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
 
-const socket = io.connect("http://localhost:5000");
+const socket = io.connect("https://az-chat.onrender.com");
 
 function App() {
 	const [ me, setMe ] = useState("");
