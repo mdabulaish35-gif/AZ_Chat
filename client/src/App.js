@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
 
-// Aapka Render Server ka Link
+// Aapka Render Server Link
 const socket = io.connect("https://az-chat.onrender.com");
 
 function App() {
@@ -40,13 +40,13 @@ function App() {
         });
     }, []);
 
-    // --- CALL KARNE WALA FUNCTION (Updated) ---
+    // --- CALL KARNE WALA FUNCTION ---
     const callUser = (id) => {
         const peer = new Peer({
             initiator: true,
             trickle: false,
             stream: stream,
-            config: { // Yahan humne Google ke servers jode hain taaki firewall cross ho sake
+            config: {
                 iceServers: [
                     { urls: "stun:stun.l.google.com:19302" },
                     { urls: "stun:global.stun.twilio.com:3478" }
@@ -69,6 +69,13 @@ function App() {
             }
         });
 
+        // NEW: Agar dost call cut kare, toh yahan pata chalega
+        peer.on("close", () => {
+            socket.off("callAccepted");
+            setCallEnded(true);
+            window.location.reload(); // Page refresh ho jayega
+        });
+
         socket.on("callAccepted", (signal) => {
             setCallAccepted(true);
             peer.signal(signal);
@@ -77,14 +84,14 @@ function App() {
         connectionRef.current = peer;
     };
 
-    // --- CALL UTHANE WALA FUNCTION (Updated) ---
+    // --- CALL UTHANE WALA FUNCTION ---
     const answerCall = () => {
         setCallAccepted(true);
         const peer = new Peer({
             initiator: false,
             trickle: false,
             stream: stream,
-            config: { // Yahan bhi same servers jode gaye hain
+            config: {
                 iceServers: [
                     { urls: "stun:stun.l.google.com:19302" },
                     { urls: "stun:global.stun.twilio.com:3478" }
@@ -102,13 +109,23 @@ function App() {
             }
         });
 
+        // NEW: Agar dost call cut kare, toh yahan pata chalega
+        peer.on("close", () => {
+            setCallEnded(true);
+            window.location.reload(); // Page refresh ho jayega
+        });
+
         peer.signal(callerSignal);
         connectionRef.current = peer;
     };
 
+    // --- CALL KATNE WALA FUNCTION ---
     const leaveCall = () => {
         setCallEnded(true);
-        connectionRef.current.destroy();
+        if (connectionRef.current) {
+            connectionRef.current.destroy(); // Connection tod do
+        }
+        window.location.reload(); // Khud ka page refresh karo
     };
 
     return (
