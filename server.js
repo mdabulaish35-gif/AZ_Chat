@@ -9,40 +9,32 @@ const io = require("socket.io")(server, {
 	}
 });
 
-// Yahan hum sabki Custom IDs store karenge (Phonebook)
-const users = {}; 
+// Yahan hum sabke naam store karenge
+// Format: { socketID: "Naam" }
+let users = {}; 
 
 io.on("connection", (socket) => {
 	
-	// Jab user apna Custom ID bheje
-	socket.on("setCustomId", (customId) => {
-		users[customId] = socket.id; // Map Custom ID to Socket ID
-		socket.emit("me", customId); // User ko confirm karo
-		console.log(`User Registered: ${customId}`);
+	// Jab koi naya banda apna naam bataye
+	socket.on("joinRoom", (name) => {
+		users[socket.id] = name; // Save name
+		
+		// Sabko nayi list bhejo
+		io.emit("allUsers", users); 
 	});
 
 	socket.on("disconnect", () => {
+		delete users[socket.id]; // List se hatao
+		io.emit("allUsers", users); // Updated list sabko bhejo
 		socket.broadcast.emit("callEnded");
-		// Optional: Delete user from list on disconnect (logic can be added)
 	});
 
 	socket.on("callUser", (data) => {
-		const socketIdToCall = users[data.userToCall]; 
-
-		if (socketIdToCall) {
-			io.to(socketIdToCall).emit("callUser", { signal: data.signalData, from: data.from, name: data.name });
-		} else {
-            // Naya: Agar user na mile toh wapas batao
-			socket.emit("noUserFound");
-		}
+		io.to(data.userToCall).emit("callUser", { signal: data.signalData, from: data.from, name: data.name });
 	});
 
 	socket.on("answerCall", (data) => {
-		// Answer karte waqt bhi ID dhoondo
-		const socketIdToAnswer = users[data.to];
-		if (socketIdToAnswer) {
-			io.to(socketIdToAnswer).emit("callAccepted", data.signal);
-		}
+		io.to(data.to).emit("callAccepted", data.signal);
 	});
 });
 
