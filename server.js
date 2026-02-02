@@ -2,10 +2,6 @@ const express = require("express");
 const http = require("http");
 const app = express();
 const server = http.createServer(app);
-const cors = require("cors");
-
-app.use(cors());
-
 const io = require("socket.io")(server, {
 	cors: {
 		origin: "*",
@@ -13,19 +9,41 @@ const io = require("socket.io")(server, {
 	}
 });
 
+// Yahan hum sabki Custom IDs store karenge (Phonebook)
+const users = {}; 
+
 io.on("connection", (socket) => {
-	socket.emit("me", socket.id);
+	
+	// Jab user apna Custom ID bheje
+	socket.on("setCustomId", (customId) => {
+		users[customId] = socket.id; // Map Custom ID to Socket ID
+		socket.emit("me", customId); // User ko confirm karo
+		console.log(`User Registered: ${customId}`);
+	});
 
 	socket.on("disconnect", () => {
 		socket.broadcast.emit("callEnded");
+		// Optional: Delete user from list on disconnect (logic can be added)
 	});
 
 	socket.on("callUser", (data) => {
-		io.to(data.userToCall).emit("callUser", { signal: data.signalData, from: data.from, name: data.name });
+		// Phonebook se dhoondo ki "Rahul123" ka asli Socket ID kya hai
+		const socketIdToCall = users[data.userToCall]; 
+
+		if (socketIdToCall) {
+			io.to(socketIdToCall).emit("callUser", { signal: data.signalData, from: data.from, name: data.name });
+		} else {
+			// Agar user nahi mila
+			console.log("User not found");
+		}
 	});
 
 	socket.on("answerCall", (data) => {
-		io.to(data.to).emit("callAccepted", data.signal);
+		// Answer karte waqt bhi ID dhoondo
+		const socketIdToAnswer = users[data.to];
+		if (socketIdToAnswer) {
+			io.to(socketIdToAnswer).emit("callAccepted", data.signal);
+		}
 	});
 });
 
