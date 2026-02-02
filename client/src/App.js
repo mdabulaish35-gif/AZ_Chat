@@ -6,9 +6,9 @@ const socket = io.connect("https://az-chat.onrender.com");
 
 function App() {
     const [ me, setMe ] = useState("");
-    const [ name, setName ] = useState(""); // Khud ka naam
+    const [ name, setName ] = useState(""); 
     const [ isNameSet, setIsNameSet ] = useState(false);
-    const [ onlineUsers, setOnlineUsers ] = useState({}); // Online doston ki list
+    const [ onlineUsers, setOnlineUsers ] = useState({}); 
 
     const [ stream, setStream ] = useState();
     const [ receivingCall, setReceivingCall ] = useState(false);
@@ -19,7 +19,7 @@ function App() {
     const [ callerName, setCallerName ] = useState("");
 
     const myVideo = useRef();
-    const userVideo = useRef();
+    const userVideo = useRef(); // Remote video ref
     const connectionRef = useRef();
 
     useEffect(() => {
@@ -34,7 +34,6 @@ function App() {
             setMe(id);
         });
 
-        // Server se nayi list aayegi to yahan update hogi
         socket.on("allUsers", (users) => {
             setOnlineUsers(users);
         });
@@ -47,7 +46,6 @@ function App() {
         });
     }, []);
 
-    // Naam set karke Online ho jao
     const submitName = () => {
         if (name.trim()) {
             socket.emit("joinRoom", name);
@@ -77,9 +75,10 @@ function App() {
             });
         });
 
-        peer.on("stream", (stream) => {
+        // IMPORTANT: Stream aate hi video element mein daal do
+        peer.on("stream", (remoteStream) => {
             if (userVideo.current) {
-                userVideo.current.srcObject = stream;
+                userVideo.current.srcObject = remoteStream;
             }
         });
 
@@ -115,9 +114,10 @@ function App() {
             socket.emit("answerCall", { signal: data, to: caller });
         });
 
-        peer.on("stream", (stream) => {
+        // IMPORTANT: Stream aate hi video element mein daal do
+        peer.on("stream", (remoteStream) => {
             if (userVideo.current) {
-                userVideo.current.srcObject = stream;
+                userVideo.current.srcObject = remoteStream;
             }
         });
 
@@ -142,24 +142,23 @@ function App() {
         <div style={{ textAlign: "center", fontFamily: "sans-serif" }}>
             <h1 style={{ color: "#4a90e2" }}>AZ_chat</h1>
             
-            {/* Video Container */}
             <div className="container" style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
+                
+                {/* MY VIDEO */}
                 <div className="video">
                     <h3>{name || "Me"}</h3>
                     <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px", border: "5px solid #007bff" }} />
                 </div>
 
-                <div className="video">
-                    {callAccepted && !callEnded ? (
-                        <>
-                        <h3>{callerName || "User"}</h3>
-                        <video playsInline ref={userVideo} autoPlay style={{ width: "300px", border: "5px solid #28a745" }} />
-                        </>
-                    ) : null}
+                {/* USER VIDEO - Fix: Ye hamesha rahega bas hidden hoga jab tak call na ho */}
+                <div className="video" style={{ display: callAccepted && !callEnded ? "block" : "none" }}>
+                    <h3>{callerName || "Friend"}</h3>
+                    <video playsInline ref={userVideo} autoPlay style={{ width: "300px", border: "5px solid #28a745" }} />
                 </div>
+
             </div>
 
-            {/* Step 1: Apna Naam Daalo */}
+            {/* LOGIN & LIST SECTION */}
             {!isNameSet ? (
                 <div style={{ marginTop: "20px", padding: "20px", border: "1px solid #ccc", background: "#fff3cd" }}>
                     <h3>Enter your Name to Join</h3>
@@ -175,7 +174,6 @@ function App() {
                     </button>
                 </div>
             ) : (
-                /* Step 2: Online List Dikhao */
                 <div className="onlineUsers" style={{ marginTop: "20px" }}>
                     
                     {callAccepted && !callEnded ? (
@@ -185,7 +183,7 @@ function App() {
                             <h3>Online Friends:</h3>
                             <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
                                 {Object.keys(onlineUsers).map((key) => {
-                                    if (key === me) return null; // Khud ko mat dikhao
+                                    if (key === me) return null;
                                     return (
                                         <div key={key} style={{ padding: "10px", border: "1px solid #ccc", borderRadius: "5px" }}>
                                             <span style={{ fontWeight: "bold", fontSize: "18px" }}>{onlineUsers[key]}</span>
@@ -200,16 +198,12 @@ function App() {
                                     );
                                 })}
                             </div>
-                            {/* Agar koi aur online na ho */}
-                            {Object.keys(onlineUsers).length <= 1 && (
-                                <p style={{color: "gray"}}>Waiting for friends to join...</p>
-                            )}
                         </>
                     )}
                 </div>
             )}
 
-            {/* Call Notification */}
+            {/* CALL NOTIFICATION */}
             {receivingCall && !callAccepted ? (
                 <div className="caller" style={{ marginTop: "20px", background: "#d4edda", padding: "20px", border: "2px solid green" }}>
                     <h1>{callerName} is calling...</h1>
