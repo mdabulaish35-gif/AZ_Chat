@@ -2,22 +2,21 @@ import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
 
-// Aapka Render Server Link (Make sure ye sahi ho)
 const socket = io.connect("https://az-chat.onrender.com");
 
 function App() {
     const [ me, setMe ] = useState("");
-    const [ customIdInput, setCustomIdInput ] = useState(""); // Naya: ID type karne ke liye
-    const [ isIdSet, setIsIdSet ] = useState(false); // Naya: Check agar ID set ho gayi
+    const [ name, setName ] = useState(""); // Khud ka naam
+    const [ isNameSet, setIsNameSet ] = useState(false);
+    const [ onlineUsers, setOnlineUsers ] = useState({}); // Online doston ki list
 
     const [ stream, setStream ] = useState();
     const [ receivingCall, setReceivingCall ] = useState(false);
     const [ caller, setCaller ] = useState("");
     const [ callerSignal, setCallerSignal ] = useState();
     const [ callAccepted, setCallAccepted ] = useState(false);
-    const [ idToCall, setIdToCall ] = useState("");
     const [ callEnded, setCallEnded ] = useState(false);
-    const [ name, setName ] = useState("");
+    const [ callerName, setCallerName ] = useState("");
 
     const myVideo = useRef();
     const userVideo = useRef();
@@ -33,27 +32,26 @@ function App() {
 
         socket.on("me", (id) => {
             setMe(id);
-			// Agar server bole ki banda nahi mila
-        socket.on("noUserFound", () => {
-            alert("Galat ID! Yeh user abhi online nahi hai ya spelling galat hai.");
-            window.location.reload(); // Page refresh kar do
         });
-		
+
+        // Server se nayi list aayegi to yahan update hogi
+        socket.on("allUsers", (users) => {
+            setOnlineUsers(users);
         });
 
         socket.on("callUser", (data) => {
             setReceivingCall(true);
             setCaller(data.from);
-            setName(data.name);
+            setCallerName(data.name);
             setCallerSignal(data.signal);
         });
     }, []);
 
-    // --- ID SET KARNE KA FUNCTION ---
-    const setMyId = () => {
-        if (customIdInput.trim() !== "") {
-            socket.emit("setCustomId", customIdInput);
-            setIsIdSet(true);
+    // Naam set karke Online ho jao
+    const submitName = () => {
+        if (name.trim()) {
+            socket.emit("joinRoom", name);
+            setIsNameSet(true);
         }
     };
 
@@ -144,64 +142,79 @@ function App() {
         <div style={{ textAlign: "center", fontFamily: "sans-serif" }}>
             <h1 style={{ color: "#4a90e2" }}>AZ_chat</h1>
             
+            {/* Video Container */}
             <div className="container" style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
                 <div className="video">
-                    <h3>My Video</h3>
+                    <h3>{name || "Me"}</h3>
                     <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px", border: "5px solid #007bff" }} />
                 </div>
 
                 <div className="video">
                     {callAccepted && !callEnded ? (
                         <>
-                        <h3>User Video</h3>
+                        <h3>{callerName || "User"}</h3>
                         <video playsInline ref={userVideo} autoPlay style={{ width: "300px", border: "5px solid #28a745" }} />
                         </>
                     ) : null}
                 </div>
             </div>
 
-            {/* --- STEP 1: APNI ID SET KARO --- */}
-            {!isIdSet ? (
+            {/* Step 1: Apna Naam Daalo */}
+            {!isNameSet ? (
                 <div style={{ marginTop: "20px", padding: "20px", border: "1px solid #ccc", background: "#fff3cd" }}>
-                    <h3>Step 1: Create your Custom ID</h3>
+                    <h3>Enter your Name to Join</h3>
                     <input
                         type="text"
-                        placeholder="Ex: Abulaish123"
-                        value={customIdInput}
-                        onChange={(e) => setCustomIdInput(e.target.value)}
+                        placeholder="Ex: Abulaish"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
                         style={{ padding: "10px", width: "200px" }}
                     />
-                    <button onClick={setMyId} style={{ marginLeft: "10px", backgroundColor: "black", color: "white", padding: "10px 20px" }}>
-                        Set ID
+                    <button onClick={submitName} style={{ marginLeft: "10px", backgroundColor: "black", color: "white", padding: "10px 20px" }}>
+                        Join Online
                     </button>
                 </div>
             ) : (
-                /* --- STEP 2: CALLING INTERFACE --- */
-                <div className="myId" style={{ marginTop: "20px", padding: "20px", border: "1px solid #ccc" }}>
-                    <h3 style={{ color: "green" }}>You are Online as: {me}</h3>
-                    
-                    <input
-                        type="text"
-                        placeholder="Enter Friend's ID to call"
-                        value={idToCall}
-                        onChange={(e) => setIdToCall(e.target.value)}
-                        style={{ padding: "10px", width: "300px" }}
-                    />
-                    <br /><br />
+                /* Step 2: Online List Dikhao */
+                <div className="onlineUsers" style={{ marginTop: "20px" }}>
                     
                     {callAccepted && !callEnded ? (
-                        <button onClick={leaveCall} style={{ backgroundColor: "red", color: "white", padding: "10px 20px" }}>End Call</button>
+                         <button onClick={leaveCall} style={{ backgroundColor: "red", color: "white", padding: "10px 20px" }}>End Call</button>
                     ) : (
-                        <button onClick={() => callUser(idToCall)} style={{ backgroundColor: "blue", color: "white", padding: "10px 20px" }}>Call User</button>
+                        <>
+                            <h3>Online Friends:</h3>
+                            <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
+                                {Object.keys(onlineUsers).map((key) => {
+                                    if (key === me) return null; // Khud ko mat dikhao
+                                    return (
+                                        <div key={key} style={{ padding: "10px", border: "1px solid #ccc", borderRadius: "5px" }}>
+                                            <span style={{ fontWeight: "bold", fontSize: "18px" }}>{onlineUsers[key]}</span>
+                                            <br />
+                                            <button 
+                                                onClick={() => callUser(key)} 
+                                                style={{ marginTop: "5px", backgroundColor: "blue", color: "white", padding: "5px 15px", cursor: "pointer" }}
+                                            >
+                                                Call Now 📞
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {/* Agar koi aur online na ho */}
+                            {Object.keys(onlineUsers).length <= 1 && (
+                                <p style={{color: "gray"}}>Waiting for friends to join...</p>
+                            )}
+                        </>
                     )}
                 </div>
             )}
 
+            {/* Call Notification */}
             {receivingCall && !callAccepted ? (
-                <div className="caller" style={{ marginTop: "20px", background: "#f0f0f0", padding: "10px" }}>
-                    <h1>{caller} is calling...</h1>
-                    <button onClick={answerCall} style={{ backgroundColor: "green", color: "white", padding: "10px 20px" }}>
-                        Answer
+                <div className="caller" style={{ marginTop: "20px", background: "#d4edda", padding: "20px", border: "2px solid green" }}>
+                    <h1>{callerName} is calling...</h1>
+                    <button onClick={answerCall} style={{ backgroundColor: "green", color: "white", padding: "15px 30px", fontSize: "18px", cursor: "pointer" }}>
+                        Answer Call
                     </button>
                 </div>
             ) : null}
