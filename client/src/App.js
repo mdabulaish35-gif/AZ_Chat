@@ -160,7 +160,7 @@ function App() {
                     <h3>Step 1: Create your Custom ID</h3>
                     <input
                         type="text"
-                        placeholder="Ex: Rahul123"
+                        placeholder="Ex: Abulaish123"
                         value={customIdInput}
                         onChange={(e) => setCustomIdInput(e.target.value)}
                         style={{ padding: "10px", width: "200px" }}
