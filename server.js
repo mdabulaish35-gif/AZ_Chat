@@ -27,14 +27,13 @@ io.on("connection", (socket) => {
 	});
 
 	socket.on("callUser", (data) => {
-		// Phonebook se dhoondo ki "Rahul123" ka asli Socket ID kya hai
 		const socketIdToCall = users[data.userToCall]; 
 
 		if (socketIdToCall) {
 			io.to(socketIdToCall).emit("callUser", { signal: data.signalData, from: data.from, name: data.name });
 		} else {
-			// Agar user nahi mila
-			console.log("User not found");
+            // Naya: Agar user na mile toh wapas batao
+			socket.emit("noUserFound");
 		}
 	});
 

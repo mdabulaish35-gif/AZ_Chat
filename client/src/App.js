@@ -33,6 +33,12 @@ function App() {
 
         socket.on("me", (id) => {
             setMe(id);
+			// Agar server bole ki banda nahi mila
+        socket.on("noUserFound", () => {
+            alert("Galat ID! Yeh user abhi online nahi hai ya spelling galat hai.");
+            window.location.reload(); // Page refresh kar do
+        });
+		
         });
 
         socket.on("callUser", (data) => {
