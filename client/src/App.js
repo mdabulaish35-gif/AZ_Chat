@@ -57,14 +57,20 @@ function App() {
         }
     };
 
-    // --- MANUALLY VIDEO PLAY KARNE KA BUTTON ---
-    const handleManualPlay = () => {
-        if (userVideo.current && remoteStream) {
+    // --- STREAM AA GAYI? TOH VIDEO MEIN DALO ---
+    useEffect(() => {
+        if (remoteStream && userVideo.current) {
+            setDebugStatus("Attaching stream to video...");
             userVideo.current.srcObject = remoteStream;
-            userVideo.current.play();
-            setDebugStatus("User clicked Play button!");
+            
+            // Thoda ruk ke play karo
+            setTimeout(() => {
+                if (userVideo.current) {
+                    userVideo.current.play().catch(e => setDebugStatus("Auto-play blocked: " + e.message));
+                }
+            }, 100);
         }
-    };
+    }, [remoteStream]); // Jab bhi remoteStream aaye, ye chalega
 
     const callUser = (id) => {
         setDebugStatus("Calling user...");
@@ -90,12 +96,8 @@ function App() {
         });
 
         peer.on("stream", (remStream) => {
-            setDebugStatus("Stream aayi! (Wait for video)");
-            setRemoteStream(remStream); 
-            if (userVideo.current) {
-                userVideo.current.srcObject = remStream;
-                userVideo.current.play().catch(e => setDebugStatus("Auto-play failed. Click 'Force Play' button."));
-            }
+            setDebugStatus("Stream Received! (ID: " + remStream.id + ")");
+            setRemoteStream(remStream); // State mein save karo taaki React ko pata chale
         });
 
         peer.on("close", () => {
@@ -133,12 +135,8 @@ function App() {
         });
 
         peer.on("stream", (remStream) => {
-            setDebugStatus("Stream aayi! (Wait for video)");
+            setDebugStatus("Stream Received! (ID: " + remStream.id + ")");
             setRemoteStream(remStream);
-            if (userVideo.current) {
-                userVideo.current.srcObject = remStream;
-                userVideo.current.play().catch(e => setDebugStatus("Auto-play failed. Click 'Force Play' button."));
-            }
         });
 
         peer.on("close", () => {
@@ -160,7 +158,8 @@ function App() {
 
     return (
         <div style={{ textAlign: "center", fontFamily: "sans-serif", paddingBottom: "50px" }}>
-            <h1 style={{ color: "#4a90e2" }}>AZ_chat</h1>
+            <h1 style={{ color: "red" }}>AZ_chat (FINAL V5)</h1> 
+            {/* Maine title RED kiya hai taaki pata chale naya code hai */}
             
             <div style={{ background: "#222", color: "#0f0", padding: "5px", fontSize: "12px" }}>
                 Status: {debugStatus}
@@ -178,23 +177,15 @@ function App() {
                 <div className="video" style={{ display: callAccepted && !callEnded ? "block" : "none" }}>
                     <h3>{callerName || "Friend"}</h3>
                     
-                    {/* VIDEO PLAYER - Added 'muted' here */}
+                    {/* VIDEO PLAYER - MAGIC KEY ADDED */}
                     <video 
+                        key={remoteStream ? remoteStream.id : "empty"} // <--- MAGIC KEY: Ye React ko force karega refresh karne ko
                         playsInline 
                         ref={userVideo} 
-                        muted  // <--- YE ADD KIYA HAI MAINE
+                        muted  
                         autoPlay
                         style={{ width: "100%", maxWidth: "300px", border: "5px solid #28a745", backgroundColor: "black" }} 
                     />
-
-                    {/* FORCE PLAY BUTTON */}
-                    <br />
-                    <button 
-                        onClick={handleManualPlay} 
-                        style={{ marginTop: "10px", backgroundColor: "orange", color: "black", padding: "10px", fontWeight: "bold", cursor: "pointer" }}
-                    >
-                        ▶️ Click Here if Video is Black
-                    </button>
                 </div>
             </div>
 
