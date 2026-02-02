@@ -20,7 +20,7 @@ function App() {
     
     // Status Logic
     const [ debugStatus, setDebugStatus ] = useState("Waiting...");
-    const [ remoteStream, setRemoteStream ] = useState(null); // Naya logic video ke liye
+    const [ remoteStream, setRemoteStream ] = useState(null); 
 
     const myVideo = useRef();
     const userVideo = useRef();
@@ -91,7 +91,7 @@ function App() {
 
         peer.on("stream", (remStream) => {
             setDebugStatus("Stream aayi! (Wait for video)");
-            setRemoteStream(remStream); // Stream ko save kar lo
+            setRemoteStream(remStream); 
             if (userVideo.current) {
                 userVideo.current.srcObject = remStream;
                 userVideo.current.play().catch(e => setDebugStatus("Auto-play failed. Click 'Force Play' button."));
@@ -178,15 +178,16 @@ function App() {
                 <div className="video" style={{ display: callAccepted && !callEnded ? "block" : "none" }}>
                     <h3>{callerName || "Friend"}</h3>
                     
-                    {/* VIDEO PLAYER */}
+                    {/* VIDEO PLAYER - Added 'muted' here */}
                     <video 
                         playsInline 
                         ref={userVideo} 
-                        // Controls hata diye hain taaki black box clean rahe, button neeche hai
+                        muted  // <--- YE ADD KIYA HAI MAINE
+                        autoPlay
                         style={{ width: "100%", maxWidth: "300px", border: "5px solid #28a745", backgroundColor: "black" }} 
                     />
 
-                    {/* FORCE PLAY BUTTON (Agar video atak jaye) */}
+                    {/* FORCE PLAY BUTTON */}
                     <br />
                     <button 
                         onClick={handleManualPlay} 
