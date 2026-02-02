@@ -17,9 +17,12 @@ function App() {
     const [ callAccepted, setCallAccepted ] = useState(false);
     const [ callEnded, setCallEnded ] = useState(false);
     const [ callerName, setCallerName ] = useState("");
+    
+    // DEBUGGING STATUS
+    const [ debugStatus, setDebugStatus ] = useState("Waiting...");
 
     const myVideo = useRef();
-    const userVideo = useRef(); // Remote video ref
+    const userVideo = useRef();
     const connectionRef = useRef();
 
     useEffect(() => {
@@ -54,6 +57,7 @@ function App() {
     };
 
     const callUser = (id) => {
+        setDebugStatus("Calling user... Connection starting");
         const peer = new Peer({
             initiator: true,
             trickle: false,
@@ -75,12 +79,18 @@ function App() {
             });
         });
 
-        // IMPORTANT UPDATE: Video ko zabardasti play karo
         peer.on("stream", (remoteStream) => {
+            setDebugStatus("Stream aayi! Video play kar raha hu...");
             if (userVideo.current) {
                 userVideo.current.srcObject = remoteStream;
-                userVideo.current.play().catch(err => console.error("Video play error:", err));
+                userVideo.current.play()
+                    .then(() => setDebugStatus("Success: Video Playing!"))
+                    .catch(e => setDebugStatus("Error: Video Autoplay Blocked: " + e.message));
             }
+        });
+        
+        peer.on("error", (err) => {
+            setDebugStatus("Connection Error: " + err.message);
         });
 
         peer.on("close", () => {
@@ -91,6 +101,7 @@ function App() {
 
         socket.on("callAccepted", (signal) => {
             setCallAccepted(true);
+            setDebugStatus("Call Accepted. Signal mil gaya.");
             peer.signal(signal);
         });
 
@@ -99,6 +110,7 @@ function App() {
 
     const answerCall = () => {
         setCallAccepted(true);
+        setDebugStatus("Answering Call... Connection starting");
         const peer = new Peer({
             initiator: false,
             trickle: false,
@@ -115,12 +127,18 @@ function App() {
             socket.emit("answerCall", { signal: data, to: caller });
         });
 
-        // IMPORTANT UPDATE: Video ko zabardasti play karo
         peer.on("stream", (remoteStream) => {
+            setDebugStatus("Stream aayi! Video play kar raha hu...");
             if (userVideo.current) {
                 userVideo.current.srcObject = remoteStream;
-                userVideo.current.play().catch(err => console.error("Video play error:", err));
+                userVideo.current.play()
+                    .then(() => setDebugStatus("Success: Video Playing!"))
+                    .catch(e => setDebugStatus("Error: Video Autoplay Blocked: " + e.message));
             }
+        });
+
+        peer.on("error", (err) => {
+            setDebugStatus("Connection Error: " + err.message);
         });
 
         peer.on("close", () => {
@@ -144,6 +162,11 @@ function App() {
         <div style={{ textAlign: "center", fontFamily: "sans-serif" }}>
             <h1 style={{ color: "#4a90e2" }}>AZ_chat</h1>
             
+            {/* DEBUG STATUS BOX */}
+            <div style={{ background: "#333", color: "#fff", padding: "10px", margin: "10px" }}>
+                <strong>Status:</strong> {debugStatus}
+            </div>
+
             <div className="container" style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
                 
                 {/* MY VIDEO */}
@@ -159,13 +182,13 @@ function App() {
                         playsInline 
                         ref={userVideo} 
                         autoPlay 
-                        style={{ width: "300px", height: "auto", border: "5px solid #28a745", backgroundColor: "black" }} 
+                        controls // Maine controls add kiye hai taaki aap khud play daba sake
+                        style={{ width: "300px", height: "300px", border: "5px solid #28a745", backgroundColor: "black" }} 
                     />
                 </div>
 
             </div>
 
-            {/* LOGIN & LIST SECTION */}
             {!isNameSet ? (
                 <div style={{ marginTop: "20px", padding: "20px", border: "1px solid #ccc", background: "#fff3cd" }}>
                     <h3>Enter your Name to Join</h3>
@@ -182,7 +205,6 @@ function App() {
                 </div>
             ) : (
                 <div className="onlineUsers" style={{ marginTop: "20px" }}>
-                    
                     {callAccepted && !callEnded ? (
                          <button onClick={leaveCall} style={{ backgroundColor: "red", color: "white", padding: "10px 20px" }}>End Call</button>
                     ) : (
@@ -209,8 +231,7 @@ function App() {
                     )}
                 </div>
             )}
-
-            {/* CALL NOTIFICATION */}
+            
             {receivingCall && !callAccepted ? (
                 <div className="caller" style={{ marginTop: "20px", background: "#d4edda", padding: "20px", border: "2px solid green" }}>
                     <h1>{callerName} is calling...</h1>
