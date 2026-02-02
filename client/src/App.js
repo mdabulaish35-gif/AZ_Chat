@@ -75,10 +75,11 @@ function App() {
             });
         });
 
-        // IMPORTANT: Stream aate hi video element mein daal do
+        // IMPORTANT UPDATE: Video ko zabardasti play karo
         peer.on("stream", (remoteStream) => {
             if (userVideo.current) {
                 userVideo.current.srcObject = remoteStream;
+                userVideo.current.play().catch(err => console.error("Video play error:", err));
             }
         });
 
@@ -114,10 +115,11 @@ function App() {
             socket.emit("answerCall", { signal: data, to: caller });
         });
 
-        // IMPORTANT: Stream aate hi video element mein daal do
+        // IMPORTANT UPDATE: Video ko zabardasti play karo
         peer.on("stream", (remoteStream) => {
             if (userVideo.current) {
                 userVideo.current.srcObject = remoteStream;
+                userVideo.current.play().catch(err => console.error("Video play error:", err));
             }
         });
 
@@ -150,10 +152,15 @@ function App() {
                     <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px", border: "5px solid #007bff" }} />
                 </div>
 
-                {/* USER VIDEO - Fix: Ye hamesha rahega bas hidden hoga jab tak call na ho */}
+                {/* USER VIDEO */}
                 <div className="video" style={{ display: callAccepted && !callEnded ? "block" : "none" }}>
                     <h3>{callerName || "Friend"}</h3>
-                    <video playsInline ref={userVideo} autoPlay style={{ width: "300px", border: "5px solid #28a745" }} />
+                    <video 
+                        playsInline 
+                        ref={userVideo} 
+                        autoPlay 
+                        style={{ width: "300px", height: "auto", border: "5px solid #28a745", backgroundColor: "black" }} 
+                    />
                 </div>
 
             </div>
