@@ -18,8 +18,9 @@ function App() {
     const [ callEnded, setCallEnded ] = useState(false);
     const [ callerName, setCallerName ] = useState("");
     
-    // DEBUGGING STATUS
+    // Status Logic
     const [ debugStatus, setDebugStatus ] = useState("Waiting...");
+    const [ remoteStream, setRemoteStream ] = useState(null); // Naya logic video ke liye
 
     const myVideo = useRef();
     const userVideo = useRef();
@@ -56,8 +57,17 @@ function App() {
         }
     };
 
+    // --- MANUALLY VIDEO PLAY KARNE KA BUTTON ---
+    const handleManualPlay = () => {
+        if (userVideo.current && remoteStream) {
+            userVideo.current.srcObject = remoteStream;
+            userVideo.current.play();
+            setDebugStatus("User clicked Play button!");
+        }
+    };
+
     const callUser = (id) => {
-        setDebugStatus("Calling user... Connection starting");
+        setDebugStatus("Calling user...");
         const peer = new Peer({
             initiator: true,
             trickle: false,
@@ -79,18 +89,13 @@ function App() {
             });
         });
 
-        peer.on("stream", (remoteStream) => {
-            setDebugStatus("Stream aayi! Video play kar raha hu...");
+        peer.on("stream", (remStream) => {
+            setDebugStatus("Stream aayi! (Wait for video)");
+            setRemoteStream(remStream); // Stream ko save kar lo
             if (userVideo.current) {
-                userVideo.current.srcObject = remoteStream;
-                userVideo.current.play()
-                    .then(() => setDebugStatus("Success: Video Playing!"))
-                    .catch(e => setDebugStatus("Error: Video Autoplay Blocked: " + e.message));
+                userVideo.current.srcObject = remStream;
+                userVideo.current.play().catch(e => setDebugStatus("Auto-play failed. Click 'Force Play' button."));
             }
-        });
-        
-        peer.on("error", (err) => {
-            setDebugStatus("Connection Error: " + err.message);
         });
 
         peer.on("close", () => {
@@ -101,7 +106,7 @@ function App() {
 
         socket.on("callAccepted", (signal) => {
             setCallAccepted(true);
-            setDebugStatus("Call Accepted. Signal mil gaya.");
+            setDebugStatus("Call Connected!");
             peer.signal(signal);
         });
 
@@ -110,7 +115,7 @@ function App() {
 
     const answerCall = () => {
         setCallAccepted(true);
-        setDebugStatus("Answering Call... Connection starting");
+        setDebugStatus("Answering...");
         const peer = new Peer({
             initiator: false,
             trickle: false,
@@ -127,18 +132,13 @@ function App() {
             socket.emit("answerCall", { signal: data, to: caller });
         });
 
-        peer.on("stream", (remoteStream) => {
-            setDebugStatus("Stream aayi! Video play kar raha hu...");
+        peer.on("stream", (remStream) => {
+            setDebugStatus("Stream aayi! (Wait for video)");
+            setRemoteStream(remStream);
             if (userVideo.current) {
-                userVideo.current.srcObject = remoteStream;
-                userVideo.current.play()
-                    .then(() => setDebugStatus("Success: Video Playing!"))
-                    .catch(e => setDebugStatus("Error: Video Autoplay Blocked: " + e.message));
+                userVideo.current.srcObject = remStream;
+                userVideo.current.play().catch(e => setDebugStatus("Auto-play failed. Click 'Force Play' button."));
             }
-        });
-
-        peer.on("error", (err) => {
-            setDebugStatus("Connection Error: " + err.message);
         });
 
         peer.on("close", () => {
@@ -159,85 +159,72 @@ function App() {
     };
 
     return (
-        <div style={{ textAlign: "center", fontFamily: "sans-serif" }}>
+        <div style={{ textAlign: "center", fontFamily: "sans-serif", paddingBottom: "50px" }}>
             <h1 style={{ color: "#4a90e2" }}>AZ_chat</h1>
             
-            {/* DEBUG STATUS BOX */}
-            <div style={{ background: "#333", color: "#fff", padding: "10px", margin: "10px" }}>
-                <strong>Status:</strong> {debugStatus}
+            <div style={{ background: "#222", color: "#0f0", padding: "5px", fontSize: "12px" }}>
+                Status: {debugStatus}
             </div>
 
-            <div className="container" style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
+            <div className="container" style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
                 
                 {/* MY VIDEO */}
                 <div className="video">
                     <h3>{name || "Me"}</h3>
-                    <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px", border: "5px solid #007bff" }} />
+                    <video playsInline muted ref={myVideo} autoPlay style={{ width: "100%", maxWidth: "300px", border: "5px solid #007bff" }} />
                 </div>
 
                 {/* USER VIDEO */}
                 <div className="video" style={{ display: callAccepted && !callEnded ? "block" : "none" }}>
                     <h3>{callerName || "Friend"}</h3>
+                    
+                    {/* VIDEO PLAYER */}
                     <video 
                         playsInline 
                         ref={userVideo} 
-                        autoPlay 
-                        controls // Maine controls add kiye hai taaki aap khud play daba sake
-                        style={{ width: "300px", height: "300px", border: "5px solid #28a745", backgroundColor: "black" }} 
+                        // Controls hata diye hain taaki black box clean rahe, button neeche hai
+                        style={{ width: "100%", maxWidth: "300px", border: "5px solid #28a745", backgroundColor: "black" }} 
                     />
-                </div>
 
+                    {/* FORCE PLAY BUTTON (Agar video atak jaye) */}
+                    <br />
+                    <button 
+                        onClick={handleManualPlay} 
+                        style={{ marginTop: "10px", backgroundColor: "orange", color: "black", padding: "10px", fontWeight: "bold", cursor: "pointer" }}
+                    >
+                        ▶️ Click Here if Video is Black
+                    </button>
+                </div>
             </div>
 
             {!isNameSet ? (
-                <div style={{ marginTop: "20px", padding: "20px", border: "1px solid #ccc", background: "#fff3cd" }}>
-                    <h3>Enter your Name to Join</h3>
-                    <input
-                        type="text"
-                        placeholder="Ex: Abulaish"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        style={{ padding: "10px", width: "200px" }}
-                    />
-                    <button onClick={submitName} style={{ marginLeft: "10px", backgroundColor: "black", color: "white", padding: "10px 20px" }}>
-                        Join Online
-                    </button>
+                <div style={{ marginTop: "20px", padding: "20px" }}>
+                    <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} style={{ padding: "10px" }} />
+                    <button onClick={submitName} style={{ padding: "10px 20px", background: "black", color: "white", marginLeft: "10px" }}>Join</button>
                 </div>
             ) : (
                 <div className="onlineUsers" style={{ marginTop: "20px" }}>
                     {callAccepted && !callEnded ? (
-                         <button onClick={leaveCall} style={{ backgroundColor: "red", color: "white", padding: "10px 20px" }}>End Call</button>
+                         <button onClick={leaveCall} style={{ backgroundColor: "red", color: "white", padding: "10px" }}>End Call</button>
                     ) : (
-                        <>
-                            <h3>Online Friends:</h3>
-                            <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
-                                {Object.keys(onlineUsers).map((key) => {
-                                    if (key === me) return null;
-                                    return (
-                                        <div key={key} style={{ padding: "10px", border: "1px solid #ccc", borderRadius: "5px" }}>
-                                            <span style={{ fontWeight: "bold", fontSize: "18px" }}>{onlineUsers[key]}</span>
-                                            <br />
-                                            <button 
-                                                onClick={() => callUser(key)} 
-                                                style={{ marginTop: "5px", backgroundColor: "blue", color: "white", padding: "5px 15px", cursor: "pointer" }}
-                                            >
-                                                Call Now 📞
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </>
+                        <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                            {Object.keys(onlineUsers).map((key) => {
+                                if (key === me) return null;
+                                return (
+                                    <button key={key} onClick={() => callUser(key)} style={{ padding: "10px", background: "blue", color: "white" }}>
+                                        Call {onlineUsers[key]} 📞
+                                    </button>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
             )}
             
             {receivingCall && !callAccepted ? (
-                <div className="caller" style={{ marginTop: "20px", background: "#d4edda", padding: "20px", border: "2px solid green" }}>
-                    <h1>{callerName} is calling...</h1>
-                    <button onClick={answerCall} style={{ backgroundColor: "green", color: "white", padding: "15px 30px", fontSize: "18px", cursor: "pointer" }}>
-                        Answer Call
-                    </button>
+                <div className="caller" style={{ background: "#d4edda", padding: "20px", position: "fixed", bottom: "0", width: "100%" }}>
+                    <h2>{callerName} is calling...</h2>
+                    <button onClick={answerCall} style={{ backgroundColor: "green", color: "white", padding: "15px" }}>Answer</button>
                 </div>
             ) : null}
         </div>
