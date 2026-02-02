@@ -1,194 +1,190 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
+import { CopyToClipboard } from "react-copy-to-clipboard";
 
 const socket = io.connect("https://az-chat.onrender.com");
 
 function App() {
-    const [me, setMe] = useState("");
-    const [name, setName] = useState("");
-    const [stream, setStream] = useState();
-    const [receivingCall, setReceivingCall] = useState(false);
-    const [caller, setCaller] = useState("");
-    const [callerSignal, setCallerSignal] = useState();
-    const [callAccepted, setCallAccepted] = useState(false);
-    const [callEnded, setCallEnded] = useState(false);
-    const [onlineUsers, setOnlineUsers] = useState({});
-    
-    // Jasoosi Logs
-    const [logs, setLogs] = useState("System Ready...");
-    const [remoteStream, setRemoteStream] = useState(null);
+	const [me, setMe] = useState("");
+	const [stream, setStream] = useState();
+	const [receivingCall, setReceivingCall] = useState(false);
+	const [caller, setCaller] = useState("");
+	const [callerSignal, setCallerSignal] = useState();
+	const [callAccepted, setCallAccepted] = useState(false);
+	const [idToCall, setIdToCall] = useState("");
+	const [callEnded, setCallEnded] = useState(false);
+	const [name, setName] = useState("");
+	
+	const myVideo = useRef();
+	const userVideo = useRef();
+	const connectionRef = useRef();
 
-    const myVideo = useRef();
-    const userVideo = useRef();
-    const connectionRef = useRef();
+	useEffect(() => {
+		// 1. Camera aur Mic ki permission lo
+		navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
+			setStream(stream);
+			if (myVideo.current) {
+				myVideo.current.srcObject = stream;
+			}
+		});
 
-    const addLog = (msg) => {
-        setLogs(prev => prev + "\n" + msg);
-        console.log(msg);
-    };
+		// 2. Apni ID server se lo
+		socket.on("me", (id) => {
+			setMe(id);
+		});
 
-    useEffect(() => {
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then((stream) => {
-                setStream(stream);
-                if (myVideo.current) myVideo.current.srcObject = stream;
-                addLog("My Camera Started");
-            })
-            .catch(err => addLog("Camera Error: " + err.message));
+		// 3. Koi call kare toh notification dikhao
+		socket.on("callUser", (data) => {
+			setReceivingCall(true);
+			setCaller(data.from);
+			setName(data.name);
+			setCallerSignal(data.signal);
+		});
+	}, []);
 
-        socket.on("me", (id) => setMe(id));
-        socket.on("allUsers", (users) => setOnlineUsers(users));
-        socket.on("callUser", (data) => {
-            setReceivingCall(true);
-            setCaller(data.from);
-            setCallerSignal(data.signal);
-            addLog("Incoming Call...");
-        });
-    }, []);
+	// --- CALL LAGANE KA FUNCTION ---
+	const callUser = (id) => {
+		const peer = new Peer({
+			initiator: true,
+			trickle: false,
+			stream: stream
+		});
 
-    // Force Video Attach
-    const forceAttach = () => {
-        if (userVideo.current && remoteStream) {
-            addLog("Forcing Video Attach...");
-            userVideo.current.srcObject = remoteStream;
-            userVideo.current.play()
-                .then(() => addLog("Video Playing Success!"))
-                .catch(e => addLog("Play Error: " + e.message));
-        } else {
-            addLog("No Stream to attach!");
-        }
-    };
+		peer.on("signal", (data) => {
+			socket.emit("callUser", {
+				userToCall: id,
+				signalData: data,
+				from: me,
+				name: name
+			});
+		});
 
-    const callUser = (id) => {
-        addLog("Calling User...");
-        const peer = new Peer({
-            initiator: true,
-            trickle: false,
-            stream: stream
-        });
+		peer.on("stream", (currentStream) => {
+			if (userVideo.current) {
+				userVideo.current.srcObject = currentStream;
+			}
+		});
 
-        peer.on("signal", (data) => {
-            socket.emit("callUser", {
-                userToCall: id,
-                signalData: data,
-                from: me,
-                name: name
-            });
-        });
+		socket.on("callAccepted", (signal) => {
+			setCallAccepted(true);
+			peer.signal(signal);
+		});
 
-        peer.on("stream", (remStream) => {
-            addLog("Stream Aayi! ID: " + remStream.id);
-            addLog("Tracks: " + remStream.getTracks().length);
-            addLog("Video Active? " + remStream.active);
-            
-            setRemoteStream(remStream);
-            
-            if (userVideo.current) {
-                userVideo.current.srcObject = remStream;
-                userVideo.current.play().catch(e => addLog("Autoplay blocked: " + e.message));
-            }
-        });
-        
-        peer.on("error", err => addLog("Peer Error: " + err.message));
+		connectionRef.current = peer;
+	};
 
-        socket.on("callAccepted", (signal) => {
-            setCallAccepted(true);
-            addLog("Call Accepted by User");
-            peer.signal(signal);
-        });
+	// --- CALL UTHANE KA FUNCTION ---
+	const answerCall = () => {
+		setCallAccepted(true);
+		const peer = new Peer({
+			initiator: false,
+			trickle: false,
+			stream: stream
+		});
 
-        connectionRef.current = peer;
-    };
+		peer.on("signal", (data) => {
+			socket.emit("answerCall", { signal: data, to: caller });
+		});
 
-    const answerCall = () => {
-        setCallAccepted(true);
-        addLog("Answering...");
-        const peer = new Peer({
-            initiator: false,
-            trickle: false,
-            stream: stream
-        });
+		peer.on("stream", (currentStream) => {
+			if (userVideo.current) {
+				userVideo.current.srcObject = currentStream;
+			}
+		});
 
-        peer.on("signal", (data) => {
-            socket.emit("answerCall", { signal: data, to: caller });
-        });
+		peer.signal(callerSignal);
+		connectionRef.current = peer;
+	};
 
-        peer.on("stream", (remStream) => {
-            addLog("Stream Aayi! ID: " + remStream.id);
-            addLog("Tracks: " + remStream.getTracks().length);
-            
-            setRemoteStream(remStream);
+	const leaveCall = () => {
+		setCallEnded(true);
+		connectionRef.current.destroy();
+		window.location.reload();
+	};
 
-            if (userVideo.current) {
-                userVideo.current.srcObject = remStream;
-                userVideo.current.play().catch(e => addLog("Autoplay blocked: " + e.message));
-            }
-        });
+	return (
+		<div style={{ textAlign: "center", fontFamily: "sans-serif", background: "#f0f2f5", minHeight: "100vh", padding: "20px" }}>
+			<h1 style={{ color: "#4a90e2" }}>AZ_chat (Original)</h1>
+			
+			<div className="container" style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "20px" }}>
+				
+				{/* MERI VIDEO */}
+				<div className="video-box">
+					<h3>{name || "Me"}</h3>
+					<video 
+						playsInline 
+						muted 
+						ref={myVideo} 
+						autoPlay 
+						style={{ width: "300px", border: "5px solid #007bff", borderRadius: "10px" }} 
+					/>
+				</div>
 
-        peer.on("error", err => addLog("Peer Error: " + err.message));
+				{/* DOST KI VIDEO */}
+				{callAccepted && !callEnded && (
+					<div className="video-box">
+						<h3>Friend</h3>
+						<video 
+							playsInline 
+							ref={userVideo} 
+							autoPlay 
+							style={{ width: "300px", border: "5px solid #28a745", borderRadius: "10px", background: "black" }} 
+						/>
+					</div>
+				)}
+			</div>
 
-        peer.signal(callerSignal);
-        connectionRef.current = peer;
-    };
+			{/* CONTROLS SECTION */}
+			<div style={{ marginTop: "30px", padding: "20px", background: "white", borderRadius: "10px", maxWidth: "400px", margin: "20px auto", boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}>
+				
+				{/* 1. Name Input */}
+				<input
+					type="text"
+					placeholder="Apna Naam Likhein..."
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
+				/>
 
-    return (
-        <div style={{ textAlign: "center", padding: "10px", fontFamily: "monospace" }}>
-            <h1 style={{color: "purple"}}>PLAN C (DIAGNOSTIC)</h1>
-            
-            {/* LOG BOX */}
-            <div style={{
-                background: "#000", color: "#0f0", 
-                padding: "10px", height: "150px", overflowY: "scroll",
-                textAlign: "left", fontSize: "12px", border: "2px solid red"
-            }}>
-                <pre>{logs}</pre>
-            </div>
+				{/* 2. Copy ID Button */}
+				<CopyToClipboard text={me} onCopy={() => alert("ID Copy Ho Gayi! Dost ko bhejein.")}>
+					<button style={{ width: "100%", padding: "10px", background: "#007bff", color: "white", border: "none", cursor: "pointer", marginBottom: "20px" }}>
+						Copy My ID
+					</button>
+				</CopyToClipboard>
 
-            <div style={{ display: "flex", justifyContent: "center", gap: "5px", marginTop: "10px" }}>
-                <video playsInline muted ref={myVideo} autoPlay style={{ width: "45%", border: "2px solid blue" }} />
-                
-                {callAccepted && !callEnded && (
-                    <div style={{width: "45%"}}>
-                        <video 
-                            playsInline 
-                            ref={userVideo} 
-                            muted // Zaroori hai mobile ke liye
-                            autoPlay 
-                            style={{ width: "100%", border: "2px solid red", background: "#222" }} 
-                        />
-                        <button onClick={forceAttach} style={{background:"orange", width:"100%", padding:"5px"}}>
-                            🛠️ Fix / Play Video
-                        </button>
-                    </div>
-                )}
-            </div>
+				{/* 3. Call Section */}
+				<input
+					type="text"
+					placeholder="Dost ki ID yahan daalein..."
+					value={idToCall}
+					onChange={(e) => setIdToCall(e.target.value)}
+					style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
+				/>
+				
+				{callAccepted && !callEnded ? (
+					<button onClick={leaveCall} style={{ width: "100%", padding: "10px", background: "red", color: "white", border: "none", cursor: "pointer" }}>
+						End Call
+					</button>
+				) : (
+					<button onClick={() => callUser(idToCall)} style={{ width: "100%", padding: "10px", background: "green", color: "white", border: "none", cursor: "pointer" }}>
+						Call
+					</button>
+				)}
+			</div>
 
-            {!me ? <p>Connecting to Server...</p> : (
-                <div style={{marginTop: "10px"}}>
-                     <input placeholder="Name" onChange={(e) => {
-                         setName(e.target.value);
-                         if(e.target.value.length > 2) socket.emit("joinRoom", e.target.value);
-                     }} />
-                     
-                     <div style={{marginTop: "10px"}}>
-                        <h3>Online:</h3>
-                        {Object.keys(onlineUsers).map(key => {
-                            if (key === me) return null;
-                            return <button key={key} onClick={() => callUser(key)} style={{margin:"5px", padding:"10px", background:"blue", color:"white"}}>Call {onlineUsers[key]}</button>
-                        })}
-                     </div>
-                </div>
-            )}
-
-            {receivingCall && !callAccepted && (
-                <div style={{position:"fixed", bottom:0, left:0, right:0, background:"lightgreen", padding:"20px"}}>
-                    <h2>Incoming Call...</h2>
-                    <button onClick={answerCall} style={{background:"green", color:"white", padding:"15px 25px"}}>Answer</button>
-                </div>
-            )}
-        </div>
-    );
+			{/* INCOMING CALL NOTIFICATION */}
+			{receivingCall && !callAccepted && (
+				<div style={{ position: "fixed", top: "20%", left: "50%", transform: "translate(-50%, -50%)", background: "#fff", padding: "30px", boxShadow: "0 0 20px rgba(0,0,0,0.2)", textAlign: "center", borderRadius: "10px" }}>
+					<h2 style={{ color: "green" }}>{caller} is calling...</h2>
+					<button onClick={answerCall} style={{ padding: "10px 30px", background: "blue", color: "white", border: "none", cursor: "pointer", fontSize: "16px" }}>
+						Answer Call
+					</button>
+				</div>
+			)}
+		</div>
+	);
 }
 
 export default App;
