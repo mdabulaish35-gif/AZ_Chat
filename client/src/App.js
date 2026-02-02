@@ -2,11 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
 
-// Aapka Render Server Link
+// Aapka Render Server Link (Make sure ye sahi ho)
 const socket = io.connect("https://az-chat.onrender.com");
 
 function App() {
     const [ me, setMe ] = useState("");
+    const [ customIdInput, setCustomIdInput ] = useState(""); // Naya: ID type karne ke liye
+    const [ isIdSet, setIsIdSet ] = useState(false); // Naya: Check agar ID set ho gayi
+
     const [ stream, setStream ] = useState();
     const [ receivingCall, setReceivingCall ] = useState(false);
     const [ caller, setCaller ] = useState("");
@@ -40,7 +43,14 @@ function App() {
         });
     }, []);
 
-    // --- CALL KARNE WALA FUNCTION ---
+    // --- ID SET KARNE KA FUNCTION ---
+    const setMyId = () => {
+        if (customIdInput.trim() !== "") {
+            socket.emit("setCustomId", customIdInput);
+            setIsIdSet(true);
+        }
+    };
+
     const callUser = (id) => {
         const peer = new Peer({
             initiator: true,
@@ -69,11 +79,10 @@ function App() {
             }
         });
 
-        // NEW: Agar dost call cut kare, toh yahan pata chalega
         peer.on("close", () => {
             socket.off("callAccepted");
             setCallEnded(true);
-            window.location.reload(); // Page refresh ho jayega
+            window.location.reload();
         });
 
         socket.on("callAccepted", (signal) => {
@@ -84,7 +93,6 @@ function App() {
         connectionRef.current = peer;
     };
 
-    // --- CALL UTHANE WALA FUNCTION ---
     const answerCall = () => {
         setCallAccepted(true);
         const peer = new Peer({
@@ -109,23 +117,21 @@ function App() {
             }
         });
 
-        // NEW: Agar dost call cut kare, toh yahan pata chalega
         peer.on("close", () => {
             setCallEnded(true);
-            window.location.reload(); // Page refresh ho jayega
+            window.location.reload();
         });
 
         peer.signal(callerSignal);
         connectionRef.current = peer;
     };
 
-    // --- CALL KATNE WALA FUNCTION ---
     const leaveCall = () => {
         setCallEnded(true);
         if (connectionRef.current) {
-            connectionRef.current.destroy(); // Connection tod do
+            connectionRef.current.destroy();
         }
-        window.location.reload(); // Khud ka page refresh karo
+        window.location.reload();
     };
 
     return (
@@ -133,14 +139,11 @@ function App() {
             <h1 style={{ color: "#4a90e2" }}>AZ_chat</h1>
             
             <div className="container" style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
-                
-                {/* My Video */}
                 <div className="video">
                     <h3>My Video</h3>
                     <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px", border: "5px solid #007bff" }} />
                 </div>
 
-                {/* User Video */}
                 <div className="video">
                     {callAccepted && !callEnded ? (
                         <>
@@ -151,28 +154,46 @@ function App() {
                 </div>
             </div>
 
-            <div className="myId" style={{ marginTop: "20px", padding: "20px", border: "1px solid #ccc" }}>
-                <h3>My ID: {me}</h3>
-                
-                <input
-                    type="text"
-                    placeholder="Enter ID to call"
-                    value={idToCall}
-                    onChange={(e) => setIdToCall(e.target.value)}
-                    style={{ padding: "10px", width: "300px" }}
-                />
-                <br /><br />
-                
-                {callAccepted && !callEnded ? (
-                    <button onClick={leaveCall} style={{ backgroundColor: "red", color: "white", padding: "10px 20px" }}>End Call</button>
-                ) : (
-                    <button onClick={() => callUser(idToCall)} style={{ backgroundColor: "blue", color: "white", padding: "10px 20px" }}>Call User</button>
-                )}
-            </div>
+            {/* --- STEP 1: APNI ID SET KARO --- */}
+            {!isIdSet ? (
+                <div style={{ marginTop: "20px", padding: "20px", border: "1px solid #ccc", background: "#fff3cd" }}>
+                    <h3>Step 1: Create your Custom ID</h3>
+                    <input
+                        type="text"
+                        placeholder="Ex: Rahul123"
+                        value={customIdInput}
+                        onChange={(e) => setCustomIdInput(e.target.value)}
+                        style={{ padding: "10px", width: "200px" }}
+                    />
+                    <button onClick={setMyId} style={{ marginLeft: "10px", backgroundColor: "black", color: "white", padding: "10px 20px" }}>
+                        Set ID
+                    </button>
+                </div>
+            ) : (
+                /* --- STEP 2: CALLING INTERFACE --- */
+                <div className="myId" style={{ marginTop: "20px", padding: "20px", border: "1px solid #ccc" }}>
+                    <h3 style={{ color: "green" }}>You are Online as: {me}</h3>
+                    
+                    <input
+                        type="text"
+                        placeholder="Enter Friend's ID to call"
+                        value={idToCall}
+                        onChange={(e) => setIdToCall(e.target.value)}
+                        style={{ padding: "10px", width: "300px" }}
+                    />
+                    <br /><br />
+                    
+                    {callAccepted && !callEnded ? (
+                        <button onClick={leaveCall} style={{ backgroundColor: "red", color: "white", padding: "10px 20px" }}>End Call</button>
+                    ) : (
+                        <button onClick={() => callUser(idToCall)} style={{ backgroundColor: "blue", color: "white", padding: "10px 20px" }}>Call User</button>
+                    )}
+                </div>
+            )}
 
             {receivingCall && !callAccepted ? (
                 <div className="caller" style={{ marginTop: "20px", background: "#f0f0f0", padding: "10px" }}>
-                    <h1>Someone is calling...</h1>
+                    <h1>{caller} is calling...</h1>
                     <button onClick={answerCall} style={{ backgroundColor: "green", color: "white", padding: "10px 20px" }}>
                         Answer
                     </button>
