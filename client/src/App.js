@@ -109,7 +109,9 @@ function App() {
             
             <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "20px" }}>
                 <div style={{background:"white", padding:"10px", borderRadius:"10px"}}>
-                    <h3>{name || "Me"}</h3>
+                    <h3 style={{color: me ? "black" : "red"}}>
+    {me ? (name || "Me") : "⏳ Connecting to Server..."}
+</h3>
                     <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px", borderRadius: "10px" }} />
                 </div>
 
