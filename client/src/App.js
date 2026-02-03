@@ -148,7 +148,7 @@ function App() {
         <div style={{ textAlign: "center", background: "#282c34", minHeight: "100vh", padding: "10px", fontFamily: "sans-serif", color: "white" }}>
             
             <div style={{ padding: "10px", borderBottom: "1px solid gray", marginBottom: "20px" }}>
-                <h3>🎥 VIDEO CHAT APP</h3>
+                <h3>🎥AZ_Chat</h3>
                 <p style={{fontSize: "12px", color: "gray"}}>{logs}</p>
                 <p style={{color: "#4CAF50", fontWeight: "bold"}}>My ID: {me || "Loading..."}</p>
             </div>
