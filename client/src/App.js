@@ -5,23 +5,18 @@ import Peer from "simple-peer";
 // Render Link
 const socket = io.connect("https://az-chat.onrender.com");
 
-// --- VIDEO COMPONENT (FIXED) ---
+// --- VIDEO COMPONENT ---
 const Video = (props) => {
     const ref = useRef();
     
     useEffect(() => {
-        // 1. Agar abhi stream aayi, toh play karo
         props.peer.on("stream", stream => {
             if(ref.current) ref.current.srcObject = stream;
         });
 
-        // 2. [IMPORTANT FIX] Agar stream PEHLE hi aa chuki thi (aur humne miss kar di)
-        // toh usko 'simple-peer' ke andar se dhoondh kar chala do.
-        // '_remoteStreams' ek hidden property hoti hai jahan stream store hoti hai.
         if (props.peer._remoteStreams && props.peer._remoteStreams.length > 0) {
             if(ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
         }
-        
         // eslint-disable-next-line
     }, []);
 
@@ -37,20 +32,28 @@ function App() {
     const [peers, setPeers] = useState([]);
     const [roomID, setRoomID] = useState("");
     const [joined, setJoined] = useState(false);
+    
+    // --- YEH HAI FIX: Stream ko save karne ke liye state ---
+    const [stream, setStream] = useState(); 
+    
     const userVideoRef = useRef();
     const peersRef = useRef([]);
 
     useEffect(() => {
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(currentStream => {
             
+            // 1. Stream ko state me save karo (FIX)
+            setStream(currentStream);
+
+            // 2. Preview video chalao
             if (userVideoRef.current) {
-                userVideoRef.current.srcObject = stream;
+                userVideoRef.current.srcObject = currentStream;
             }
 
             socket.on("all users", users => {
                 const peers = [];
                 users.forEach(userID => {
-                    const peer = createPeer(userID, socket.id, stream);
+                    const peer = createPeer(userID, socket.id, currentStream);
                     peersRef.current.push({
                         peerID: userID,
                         peer,
@@ -61,7 +64,7 @@ function App() {
             })
 
             socket.on("user joined", payload => {
-                const peer = addPeer(payload.signal, payload.callerID, stream);
+                const peer = addPeer(payload.signal, payload.callerID, currentStream);
                 peersRef.current.push({
                     peerID: payload.callerID,
                     peer,
@@ -76,6 +79,15 @@ function App() {
         });
         // eslint-disable-next-line
     }, []);
+
+    // --- YEH NAYA EFFECT HAI ---
+    // Jaise hi 'joined' true hoga, ye code chalega aur stream wapas set karega
+    useEffect(() => {
+        if (stream && userVideoRef.current) {
+            userVideoRef.current.srcObject = stream;
+        }
+    }, [joined, stream]);
+    // ----------------------------
 
     function createPeer(userToSignal, callerID, stream) {
         const peer = new Peer({
@@ -152,11 +164,13 @@ function App() {
                 </div>
             ) : (
                 <div style={{display: "flex", flexWrap: "wrap", justifyContent: "center"}}>
+                    {/* MERI VIDEO (AB FIX HO GAYI) */}
                     <div style={{margin: "10px", position: "relative"}}>
                         <video muted ref={userVideoRef} autoPlay playsInline style={{width: "250px", border: "2px solid #61dafb", borderRadius: "10px"}} />
                         <p style={{position: "absolute", bottom: "10px", left: "10px", background: "black", margin: 0, padding: "2px 5px"}}>Me</p>
                     </div>
 
+                    {/* DOSTO KI VIDEOS */}
                     {peers.map((peer, index) => {
                         return (
                             <Video key={index} peer={peer} />
