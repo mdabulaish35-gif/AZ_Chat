@@ -165,13 +165,13 @@ function App() {
     return (
         <div style={{ padding: "20px", background: "#282c34", minHeight: "100vh", textAlign: "center", color: "white" }}>
             
-            <h1>👨‍👩‍👦‍👦 Group Video Chat</h1>
+            <h1>👨‍👩‍👦‍👦 A-Z Video Talk</h1>
             
             {!joined ? (
                 <div style={{marginTop: "50px"}}>
                     <input 
                         type="text" 
-                        placeholder="Enter Room Name (e.g. Boss)" 
+                        placeholder="Enter Room Name (e.g.  osama12..)" 
                         onChange={(e) => setRoomID(e.target.value)} 
                         style={{padding: "10px", fontSize: "16px"}}
                     />
