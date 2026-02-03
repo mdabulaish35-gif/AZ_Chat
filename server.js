@@ -10,15 +10,15 @@ const io = socket(server, {
     }
 });
 
-const users = {}; // Room ID ke hisab se users store honge
-const socketToRoom = {}; // Socket ID kis room me hai
+const users = {}; 
+const socketToRoom = {}; 
 
 io.on('connection', socket => {
     
     socket.on("join room", roomID => {
         if (users[roomID]) {
             const length = users[roomID].length;
-            if (length === 5) { // Limit: Max 4 log ek room me
+            if (length === 4) { 
                 socket.emit("room full");
                 return;
             }
@@ -30,7 +30,6 @@ io.on('connection', socket => {
         socketToRoom[socket.id] = roomID;
         const usersInThisRoom = users[roomID].filter(id => id !== socket.id);
         
-        // Naye bande ko baaki sabki list bhejo
         socket.emit("all users", usersInThisRoom);
     });
 
@@ -42,17 +41,21 @@ io.on('connection', socket => {
         io.to(payload.callerID).emit('receiving returned signal', { signal: payload.signal, id: socket.id });
     });
 
+    // --- YAHAN CHANGE HUA HAI (Disconnect Logic) ---
     socket.on('disconnect', () => {
         const roomID = socketToRoom[socket.id];
         let room = users[roomID];
         if (room) {
+            // User ko list se hatao
             room = room.filter(id => id !== socket.id);
             users[roomID] = room;
+            
+            // BAAKI LOGO KO BATAO: "Yeh banda chala gaya, iski video hata do"
+            socket.broadcast.to(roomID).emit('user left', socket.id);
         }
-        // Client side par user remove karne ka logic simple rakhne ke liye hum reload prefer karenge
     });
 
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Group Call Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -33,7 +33,6 @@ function App() {
     const [roomID, setRoomID] = useState("");
     const [joined, setJoined] = useState(false);
     
-    // Media States
     const [stream, setStream] = useState();
     const [micOn, setMicOn] = useState(true);
     const [cameraOn, setCameraOn] = useState(true);
@@ -73,6 +72,20 @@ function App() {
             socket.on("receiving returned signal", payload => {
                 const item = peersRef.current.find(p => p.peerID === payload.id);
                 item.peer.signal(payload.signal);
+            });
+
+            // --- YAHAN CHANGE HUA HAI: (User Left Logic) ---
+            socket.on("user left", id => {
+                // 1. Us bande ka connection todo
+                const peerObj = peersRef.current.find(p => p.peerID === id);
+                if(peerObj) {
+                    peerObj.peer.destroy();
+                }
+
+                // 2. List se usko hata do (Filter)
+                const peers = peersRef.current.filter(p => p.peerID !== id);
+                peersRef.current = peers;
+                setPeers(peers);
             });
         });
         // eslint-disable-next-line
