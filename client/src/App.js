@@ -135,8 +135,6 @@ function App() {
         }
     }
 
-    // --- NEW FUNCTIONS: CONTROLS ---
-
     const toggleMic = () => {
         if (stream) {
             const audioTrack = stream.getAudioTracks()[0];
@@ -158,20 +156,19 @@ function App() {
     };
 
     const leaveRoom = () => {
-        // Sabse simple tarika: Page reload kar do
         window.location.reload();
     };
 
     return (
         <div style={{ padding: "20px", background: "#282c34", minHeight: "100vh", textAlign: "center", color: "white" }}>
             
-            <h1>👨‍👩‍👦‍👦 A-Z Video Talk</h1>
+            <h1>👨‍👩‍👦‍👦 Group Video Chat</h1>
             
             {!joined ? (
                 <div style={{marginTop: "50px"}}>
                     <input 
                         type="text" 
-                        placeholder="Enter Room Name (e.g.  osama12..)" 
+                        placeholder="Enter Room Name (e.g. Boss)" 
                         onChange={(e) => setRoomID(e.target.value)} 
                         style={{padding: "10px", fontSize: "16px"}}
                     />
@@ -186,7 +183,6 @@ function App() {
                 </div>
             ) : (
                 <>
-                    {/* VIDEO AREA */}
                     <div style={{display: "flex", flexWrap: "wrap", justifyContent: "center", marginBottom: "80px"}}>
                         <div style={{margin: "10px", position: "relative"}}>
                             <video muted ref={userVideoRef} autoPlay playsInline style={{width: "250px", border: "2px solid #61dafb", borderRadius: "10px"}} />
@@ -200,7 +196,6 @@ function App() {
                         })}
                     </div>
 
-                    {/* CONTROL BAR (FIXED BOTTOM) */}
                     <div style={{
                         position: "fixed", 
                         bottom: "20px", 
@@ -213,17 +208,14 @@ function App() {
                         gap: "15px",
                         zIndex: 100
                     }}>
-                        {/* MIC BUTTON */}
                         <button onClick={toggleMic} style={{...btnStyle, background: micOn ? "#4CAF50" : "#f44336"}}>
                             {micOn ? "🎤 On" : "🎤 Off"}
                         </button>
 
-                        {/* CAMERA BUTTON */}
                         <button onClick={toggleCamera} style={{...btnStyle, background: cameraOn ? "#2196F3" : "#f44336"}}>
                             {cameraOn ? "📷 On" : "📷 Off"}
                         </button>
 
-                        {/* LEAVE BUTTON */}
                         <button onClick={leaveRoom} style={{...btnStyle, background: "red"}}>
                             📞 Leave
                         </button>
