@@ -33,19 +33,17 @@ function App() {
     const [roomID, setRoomID] = useState("");
     const [joined, setJoined] = useState(false);
     
-    // --- YEH HAI FIX: Stream ko save karne ke liye state ---
-    const [stream, setStream] = useState(); 
+    // Media States
+    const [stream, setStream] = useState();
+    const [micOn, setMicOn] = useState(true);
+    const [cameraOn, setCameraOn] = useState(true);
     
     const userVideoRef = useRef();
     const peersRef = useRef([]);
 
     useEffect(() => {
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(currentStream => {
-            
-            // 1. Stream ko state me save karo (FIX)
             setStream(currentStream);
-
-            // 2. Preview video chalao
             if (userVideoRef.current) {
                 userVideoRef.current.srcObject = currentStream;
             }
@@ -80,14 +78,11 @@ function App() {
         // eslint-disable-next-line
     }, []);
 
-    // --- YEH NAYA EFFECT HAI ---
-    // Jaise hi 'joined' true hoga, ye code chalega aur stream wapas set karega
     useEffect(() => {
         if (stream && userVideoRef.current) {
             userVideoRef.current.srcObject = stream;
         }
     }, [joined, stream]);
-    // ----------------------------
 
     function createPeer(userToSignal, callerID, stream) {
         const peer = new Peer({
@@ -140,10 +135,37 @@ function App() {
         }
     }
 
+    // --- NEW FUNCTIONS: CONTROLS ---
+
+    const toggleMic = () => {
+        if (stream) {
+            const audioTrack = stream.getAudioTracks()[0];
+            if(audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                setMicOn(audioTrack.enabled);
+            }
+        }
+    };
+
+    const toggleCamera = () => {
+        if (stream) {
+            const videoTrack = stream.getVideoTracks()[0];
+            if(videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                setCameraOn(videoTrack.enabled);
+            }
+        }
+    };
+
+    const leaveRoom = () => {
+        // Sabse simple tarika: Page reload kar do
+        window.location.reload();
+    };
+
     return (
         <div style={{ padding: "20px", background: "#282c34", minHeight: "100vh", textAlign: "center", color: "white" }}>
             
-            <h1>A-Z Video Chat </h1>
+            <h1>👨‍👩‍👦‍👦 Group Video Chat</h1>
             
             {!joined ? (
                 <div style={{marginTop: "50px"}}>
@@ -155,7 +177,7 @@ function App() {
                     />
                     <br/><br/>
                     <button onClick={joinRoom} style={{padding: "10px 20px", background: "#4CAF50", color: "white", border: "none", cursor: "pointer", fontSize: "18px"}}>
-                        Call Now
+                        Join Room
                     </button>
                     <div style={{marginTop: "30px"}}>
                         <video muted ref={userVideoRef} autoPlay playsInline style={{width: "300px", border: "2px solid red"}} />
@@ -163,23 +185,63 @@ function App() {
                     </div>
                 </div>
             ) : (
-                <div style={{display: "flex", flexWrap: "wrap", justifyContent: "center"}}>
-                    {/* MERI VIDEO (AB FIX HO GAYI) */}
-                    <div style={{margin: "10px", position: "relative"}}>
-                        <video muted ref={userVideoRef} autoPlay playsInline style={{width: "250px", border: "2px solid #61dafb", borderRadius: "10px"}} />
-                        <p style={{position: "absolute", bottom: "10px", left: "10px", background: "black", margin: 0, padding: "2px 5px"}}>Me</p>
+                <>
+                    {/* VIDEO AREA */}
+                    <div style={{display: "flex", flexWrap: "wrap", justifyContent: "center", marginBottom: "80px"}}>
+                        <div style={{margin: "10px", position: "relative"}}>
+                            <video muted ref={userVideoRef} autoPlay playsInline style={{width: "250px", border: "2px solid #61dafb", borderRadius: "10px"}} />
+                            <p style={{position: "absolute", bottom: "10px", left: "10px", background: "black", margin: 0, padding: "2px 5px"}}>Me {micOn ? "" : "(Muted)"}</p>
+                        </div>
+
+                        {peers.map((peer, index) => {
+                            return (
+                                <Video key={index} peer={peer} />
+                            );
+                        })}
                     </div>
 
-                    {/* DOSTO KI VIDEOS */}
-                    {peers.map((peer, index) => {
-                        return (
-                            <Video key={index} peer={peer} />
-                        );
-                    })}
-                </div>
+                    {/* CONTROL BAR (FIXED BOTTOM) */}
+                    <div style={{
+                        position: "fixed", 
+                        bottom: "20px", 
+                        left: "50%", 
+                        transform: "translateX(-50%)", 
+                        background: "rgba(0,0,0,0.8)", 
+                        padding: "10px 20px", 
+                        borderRadius: "30px", 
+                        display: "flex", 
+                        gap: "15px",
+                        zIndex: 100
+                    }}>
+                        {/* MIC BUTTON */}
+                        <button onClick={toggleMic} style={{...btnStyle, background: micOn ? "#4CAF50" : "#f44336"}}>
+                            {micOn ? "🎤 On" : "🎤 Off"}
+                        </button>
+
+                        {/* CAMERA BUTTON */}
+                        <button onClick={toggleCamera} style={{...btnStyle, background: cameraOn ? "#2196F3" : "#f44336"}}>
+                            {cameraOn ? "📷 On" : "📷 Off"}
+                        </button>
+
+                        {/* LEAVE BUTTON */}
+                        <button onClick={leaveRoom} style={{...btnStyle, background: "red"}}>
+                            📞 Leave
+                        </button>
+                    </div>
+                </>
             )}
         </div>
     );
 }
+
+const btnStyle = {
+    padding: "10px 20px",
+    fontSize: "16px",
+    border: "none",
+    borderRadius: "20px",
+    cursor: "pointer",
+    color: "white",
+    fontWeight: "bold"
+};
 
 export default App;
