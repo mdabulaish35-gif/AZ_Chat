@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
 
-// Render Link (Production ke liye)
+// Render Link
 const socket = io.connect("https://az-chat.onrender.com", { 
     transports: ["websocket"],
     reconnectionAttempts: 5
@@ -18,13 +18,17 @@ function App() {
     const [idToCall, setIdToCall] = useState("");
     const [name, setName] = useState("");
     const [logs, setLogs] = useState("Initializing...");
+    const [callEnded, setCallEnded] = useState(false);
     
+    // Controls State
+    const [micOn, setMicOn] = useState(true);
+    const [cameraOn, setCameraOn] = useState(true);
+
     const myVideo = useRef();
     const userVideo = useRef();
     const connectionRef = useRef();
 
     useEffect(() => {
-        // Log Update Helper
         const addLog = (msg) => setLogs(prev => msg + " | " + prev);
 
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
@@ -60,7 +64,6 @@ function App() {
             initiator: true,
             trickle: false,
             stream: stream,
-            // Google STUN Servers Added Here
             config: {
                 iceServers: [
                     { urls: "stun:stun.l.google.com:19302" },
@@ -96,7 +99,6 @@ function App() {
             initiator: false,
             trickle: false,
             stream: stream,
-            // Google STUN Servers Added Here Also
             config: {
                 iceServers: [
                     { urls: "stun:stun.l.google.com:19302" },
@@ -117,41 +119,119 @@ function App() {
         connectionRef.current = peer;
     };
 
+    const leaveCall = () => {
+        setCallEnded(true);
+        if (connectionRef.current) {
+            connectionRef.current.destroy();
+        }
+        window.location.reload();
+    };
+
+    // --- NEW FEATURES: MIC & CAMERA TOGGLE ---
+    const toggleMic = () => {
+        if (stream) {
+            const audioTrack = stream.getAudioTracks()[0];
+            audioTrack.enabled = !audioTrack.enabled;
+            setMicOn(audioTrack.enabled);
+        }
+    };
+
+    const toggleCamera = () => {
+        if (stream) {
+            const videoTrack = stream.getVideoTracks()[0];
+            videoTrack.enabled = !videoTrack.enabled;
+            setCameraOn(videoTrack.enabled);
+        }
+    };
+
     return (
-        <div style={{ textAlign: "center", background: "#f0f2f5", minHeight: "100vh", padding: "10px", fontFamily: "monospace" }}>
+        <div style={{ textAlign: "center", background: "#282c34", minHeight: "100vh", padding: "10px", fontFamily: "sans-serif", color: "white" }}>
             
-            {/* BLACK BOX */}
-            <div style={{background: "black", color: "#0f0", padding: "15px", marginBottom: "20px", border: "2px solid red"}}>
-                <h3>📢 STATUS LOGS (V8-FINAL)</h3>
-                <p>{logs}</p>
-                <p style={{color: "yellow", fontSize: "20px"}}>My ID: {me || "Waiting..."}</p>
+            <div style={{ padding: "10px", borderBottom: "1px solid gray", marginBottom: "20px" }}>
+                <h3>🎥 VIDEO CHAT APP</h3>
+                <p style={{fontSize: "12px", color: "gray"}}>{logs}</p>
+                <p style={{color: "#4CAF50", fontWeight: "bold"}}>My ID: {me || "Loading..."}</p>
             </div>
             
-            <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
-                <video playsInline muted ref={myVideo} autoPlay style={{ width: "45%", border:"2px solid blue" }} />
+            <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "10px" }}>
+                {/* My Video */}
+                <div style={{ position: "relative" }}>
+                    <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px", borderRadius: "10px", border: "2px solid #61dafb", transform: "scaleX(-1)" }} />
+                    <p style={{position: "absolute", bottom: "10px", left: "10px", margin: 0, background: "rgba(0,0,0,0.5)", padding: "2px 5px"}}>You {micOn ? "" : "(Muted)"}</p>
+                </div>
                 
-                {callAccepted && (
-                    <video playsInline ref={userVideo} autoPlay style={{ width: "45%", background: "black", border:"2px solid green" }} />
+                {/* User Video */}
+                {callAccepted && !callEnded && (
+                    <div style={{ position: "relative" }}>
+                        <video playsInline ref={userVideo} autoPlay style={{ width: "300px", borderRadius: "10px", border: "2px solid #4CAF50" }} />
+                        <p style={{position: "absolute", bottom: "10px", left: "10px", margin: 0, background: "rgba(0,0,0,0.5)", padding: "2px 5px"}}>Friend</p>
+                    </div>
                 )}
             </div>
 
-            <div style={{ marginTop: "20px" }}>
-                <button onClick={() => {navigator.clipboard.writeText(me); alert("Copied!")}} style={{padding:"10px", background:"blue", color:"white"}}>
-                    Copy My ID
-                </button>
-                <br /><br />
-                <input type="text" placeholder="Friend ID" onChange={(e) => setIdToCall(e.target.value)} style={{padding:"10px"}} />
-                <button onClick={() => callUser(idToCall)} style={{background:"green", color:"white", padding:"10px"}}>Call</button>
+            {/* BUTTONS CONTROL PANEL */}
+            <div style={{ marginTop: "20px", display: "flex", justifyContent: "center", gap: "15px" }}>
+                
+                {callAccepted && !callEnded ? (
+                    <>
+                        {/* MIC BUTTON */}
+                        <button onClick={toggleMic} style={{ ...btnStyle, background: micOn ? "#4CAF50" : "#f44336" }}>
+                            {micOn ? "🎤 Mic On" : "🚫 Mic Off"}
+                        </button>
+
+                        {/* CAMERA BUTTON */}
+                        <button onClick={toggleCamera} style={{ ...btnStyle, background: cameraOn ? "#2196F3" : "#f44336" }}>
+                            {cameraOn ? "📷 Cam On" : "🚫 Cam Off"}
+                        </button>
+
+                        {/* END CALL BUTTON */}
+                        <button onClick={leaveCall} style={{ ...btnStyle, background: "red" }}>
+                            📞 End Call
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button onClick={() => {navigator.clipboard.writeText(me); alert("ID Copied!")}} style={{ ...btnStyle, background: "#61dafb", color: "black" }}>
+                            📋 Copy ID
+                        </button>
+                        
+                        <div style={{display: "flex", gap: "5px"}}>
+                            <input 
+                                type="text" 
+                                placeholder="Paste Friend ID" 
+                                onChange={(e) => setIdToCall(e.target.value)} 
+                                style={{padding: "10px", borderRadius: "5px", border: "none"}} 
+                            />
+                            <button onClick={() => callUser(idToCall)} style={{ ...btnStyle, background: "#4CAF50" }}>
+                                📞 Call
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
             
             {receivingCall && !callAccepted && (
-                <div style={{marginTop:"20px", background:"yellow", padding:"10px"}}>
-                    <h2>{name} Calling...</h2>
-                    <button onClick={answerCall} style={{background:"green", color:"white", padding:"10px"}}>Answer</button>
+                <div style={{marginTop:"20px", background: "#fff", color: "black", padding:"20px", borderRadius: "10px"}}>
+                    <h2>{name || "Someone"} is calling...</h2>
+                    <button onClick={answerCall} style={{background:"green", color:"white", padding:"10px 20px", fontSize: "18px", border: "none", borderRadius: "5px", cursor: "pointer"}}>
+                        Answer Call
+                    </button>
                 </div>
             )}
         </div>
     );
 }
+
+// Simple styling object for buttons
+const btnStyle = {
+    padding: "12px 20px",
+    fontSize: "16px",
+    border: "none",
+    borderRadius: "50px",
+    cursor: "pointer",
+    color: "white",
+    fontWeight: "bold",
+    boxShadow: "0px 4px 6px rgba(0,0,0,0.2)"
+};
 
 export default App;
