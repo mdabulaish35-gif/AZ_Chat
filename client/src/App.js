@@ -5,14 +5,17 @@ import Peer from "simple-peer";
 // Render Link
 const socket = io.connect("https://az-chat.onrender.com");
 
-// --- VIDEO COMPONENT (Har user ke liye alag box) ---
+// --- VIDEO COMPONENT ---
 const Video = (props) => {
     const ref = useRef();
+    
     useEffect(() => {
         props.peer.on("stream", stream => {
-            ref.current.srcObject = stream;
+            if(ref.current) ref.current.srcObject = stream;
         })
+        // eslint-disable-next-line
     }, []);
+
     return (
         <div style={{margin: "10px", position: "relative"}}>
             <video playsInline autoPlay ref={ref} style={{width: "250px", border: "2px solid #00ff00", borderRadius: "10px"}} />
@@ -22,18 +25,14 @@ const Video = (props) => {
 
 function App() {
     const [peers, setPeers] = useState([]); // Sab dosto ki list
-    const [userVideo, setUserVideo] = useState(); // Khud ki video
     const [roomID, setRoomID] = useState(""); // Room ka naam
     const [joined, setJoined] = useState(false); // Room join kiya ya nahi
     const userVideoRef = useRef();
     const peersRef = useRef([]); // Internal Logic ke liye reference
 
-    // Room ID
-    const roomIDRef = useRef();
-
     useEffect(() => {
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-            setUserVideo(stream);
+            
             if (userVideoRef.current) {
                 userVideoRef.current.srcObject = stream;
             }
@@ -68,6 +67,7 @@ function App() {
                 item.peer.signal(payload.signal);
             });
         });
+        // eslint-disable-next-line
     }, []);
 
     // --- LOGIC: Connection banana (Initiator) ---
@@ -129,7 +129,7 @@ function App() {
             
             <h1>👨‍👩‍👦‍👦 Group Video Chat</h1>
             
-            {/* Login Screen: Agar join nahi kiya toh input dikhao */}
+            {/* Login Screen */}
             {!joined ? (
                 <div style={{marginTop: "50px"}}>
                     <input 
@@ -148,7 +148,7 @@ function App() {
                     </div>
                 </div>
             ) : (
-                // Video Screen: Join karne ke baad
+                // Video Screen
                 <div style={{display: "flex", flexWrap: "wrap", justifyContent: "center"}}>
                     {/* MERI VIDEO */}
                     <div style={{margin: "10px", position: "relative"}}>
@@ -156,7 +156,7 @@ function App() {
                         <p style={{position: "absolute", bottom: "10px", left: "10px", background: "black"}}>Me</p>
                     </div>
 
-                    {/* DOSTO KI VIDEOS (Loop chalega) */}
+                    {/* DOSTO KI VIDEOS */}
                     {peers.map((peer, index) => {
                         return (
                             <Video key={index} peer={peer} />
