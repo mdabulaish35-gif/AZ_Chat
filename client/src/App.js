@@ -3,7 +3,10 @@ import io from "socket.io-client";
 import Peer from "simple-peer";
 
 // Render Server Link
-const socket = io.connect("https://az-chat.onrender.com");
+const socket = io.connect("https://az-chat.onrender.com", {
+    transports: ["websocket"],
+    upgrade: false
+});
 
 function App() {
     const [me, setMe] = useState("");
