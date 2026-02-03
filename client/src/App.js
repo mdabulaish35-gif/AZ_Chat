@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
-import { CopyToClipboard } from "react-copy-to-clipboard";
 
+// Render Server Link
 const socket = io.connect("https://az-chat.onrender.com");
 
 function App() {
@@ -21,6 +21,7 @@ function App() {
     const connectionRef = useRef();
 
     useEffect(() => {
+        // Camera Permission
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
             setStream(stream);
             if (myVideo.current) {
@@ -28,9 +29,7 @@ function App() {
             }
         });
 
-        socket.on("me", (id) => {
-            setMe(id);
-        });
+        socket.on("me", (id) => setMe(id));
 
         socket.on("callUser", (data) => {
             setReceivingCall(true);
@@ -39,6 +38,12 @@ function App() {
             setCallerSignal(data.signal);
         });
     }, []);
+
+    // --- COPY ID FUNCTION (Native Browser Logic) ---
+    const copyId = () => {
+        navigator.clipboard.writeText(me);
+        alert("ID Copy ho gayi! Dost ko bhejein.");
+    };
 
     const callUser = (id) => {
         const peer = new Peer({
@@ -57,9 +62,7 @@ function App() {
         });
 
         peer.on("stream", (currentStream) => {
-            if (userVideo.current) {
-                userVideo.current.srcObject = currentStream;
-            }
+            if (userVideo.current) userVideo.current.srcObject = currentStream;
         });
 
         socket.on("callAccepted", (signal) => {
@@ -83,9 +86,7 @@ function App() {
         });
 
         peer.on("stream", (currentStream) => {
-            if (userVideo.current) {
-                userVideo.current.srcObject = currentStream;
-            }
+            if (userVideo.current) userVideo.current.srcObject = currentStream;
         });
 
         peer.signal(callerSignal);
@@ -101,33 +102,34 @@ function App() {
     return (
         <div style={{ textAlign: "center", fontFamily: "sans-serif", background: "#f0f2f5", minHeight: "100vh", padding: "20px" }}>
             
-            {/* --- VISUAL TEST HEADER (RED COLOR) --- */}
-            <h1 style={{ color: "red", border: "2px dashed red", padding: "10px" }}>
-                AZ_CHAT: WAPAS AA GAYA
+            {/* GREEN HEADER - VISUAL PROOF */}
+            <h1 style={{ color: "green", borderBottom: "5px solid green", paddingBottom: "10px" }}>
+                AZ_CHAT: MANUAL MODE (FIXED)
             </h1>
             
-            <div className="container" style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "20px" }}>
-                <div className="video-box">
+            <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "20px" }}>
+                <div style={{background:"white", padding:"10px", borderRadius:"10px"}}>
                     <h3>{name || "Me"}</h3>
-                    <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px", border: "5px solid #007bff", borderRadius: "10px" }} />
+                    <video playsInline muted ref={myVideo} autoPlay style={{ width: "300px", borderRadius: "10px" }} />
                 </div>
 
                 {callAccepted && !callEnded && (
-                    <div className="video-box">
+                    <div style={{background:"white", padding:"10px", borderRadius:"10px"}}>
                         <h3>Friend</h3>
-                        <video playsInline ref={userVideo} autoPlay style={{ width: "300px", border: "5px solid #28a745", borderRadius: "10px", background: "black" }} />
+                        <video playsInline ref={userVideo} autoPlay style={{ width: "300px", borderRadius: "10px", background: "black" }} />
                     </div>
                 )}
             </div>
 
-            <div style={{ marginTop: "30px", padding: "20px", background: "white", borderRadius: "10px", maxWidth: "400px", margin: "20px auto" }}>
-                <input type="text" placeholder="Apna Naam Likhein..." value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
+            <div style={{ marginTop: "30px", padding: "20px", background: "white", borderRadius: "10px", maxWidth: "400px", margin: "20px auto", boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}>
+                <input type="text" placeholder="Apna Naam..." value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
                 
-                <CopyToClipboard text={me} onCopy={() => alert("ID Copy Ho Gayi!")}>
-                    <button style={{ width: "100%", padding: "10px", background: "#007bff", color: "white", border: "none", cursor: "pointer", marginBottom: "20px" }}>Copy My ID</button>
-                </CopyToClipboard>
+                {/* SIMPLE COPY BUTTON */}
+                <button onClick={copyId} style={{ width: "100%", padding: "10px", background: "#007bff", color: "white", border: "none", cursor: "pointer", marginBottom: "20px" }}>
+                    Copy My ID
+                </button>
 
-                <input type="text" placeholder="Dost ki ID yahan daalein..." value={idToCall} onChange={(e) => setIdToCall(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
+                <input type="text" placeholder="Paste Friend ID here..." value={idToCall} onChange={(e) => setIdToCall(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px" }} />
                 
                 {callAccepted && !callEnded ? (
                     <button onClick={leaveCall} style={{ width: "100%", padding: "10px", background: "red", color: "white" }}>End Call</button>
@@ -137,9 +139,9 @@ function App() {
             </div>
 
             {receivingCall && !callAccepted && (
-                <div style={{ position: "fixed", top: "20%", left: "50%", transform: "translate(-50%, -50%)", background: "#fff", padding: "30px", border: "2px solid green" }}>
+                <div style={{ position: "fixed", top: "20%", left: "50%", transform: "translate(-50%, -50%)", background: "#fff", padding: "30px", boxShadow: "0 0 20px rgba(0,0,0,0.2)", borderRadius:"10px", border:"2px solid green" }}>
                     <h2 style={{ color: "green" }}>{caller} is calling...</h2>
-                    <button onClick={answerCall} style={{ padding: "10px 30px", background: "blue", color: "white" }}>Answer Call</button>
+                    <button onClick={answerCall} style={{ padding: "10px 30px", background: "blue", color: "white", cursor: "pointer" }}>Answer Call</button>
                 </div>
             )}
         </div>
