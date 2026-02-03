@@ -3,10 +3,10 @@ const http = require("http");
 const app = express();
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
-	cors: {
-		origin: "*",
-		methods: [ "GET", "POST" ]
-	}
+    cors: {
+        origin: "*",
+        methods: [ "GET", "POST" ]
+    }
 });
 
 // Yahan hum sabke naam store karenge
@@ -14,28 +14,33 @@ const io = require("socket.io")(server, {
 let users = {}; 
 
 io.on("connection", (socket) => {
-	
-	// Jab koi naya banda apna naam bataye
-	socket.on("joinRoom", (name) => {
-		users[socket.id] = name; // Save name
-		
-		// Sabko nayi list bhejo
-		io.emit("allUsers", users); 
-	});
+    
+    // --- YEH LINE MISSING THI ---
+    // Jaise hi connect ho, client ko uski ID bhejo
+    socket.emit("me", socket.id);
+    // -----------------------------
 
-	socket.on("disconnect", () => {
-		delete users[socket.id]; // List se hatao
-		io.emit("allUsers", users); // Updated list sabko bhejo
-		socket.broadcast.emit("callEnded");
-	});
+    // Jab koi naya banda apna naam bataye
+    socket.on("joinRoom", (name) => {
+        users[socket.id] = name; // Save name
+        
+        // Sabko nayi list bhejo
+        io.emit("allUsers", users); 
+    });
 
-	socket.on("callUser", (data) => {
-		io.to(data.userToCall).emit("callUser", { signal: data.signalData, from: data.from, name: data.name });
-	});
+    socket.on("disconnect", () => {
+        delete users[socket.id]; // List se hatao
+        io.emit("allUsers", users); // Updated list sabko bhejo
+        socket.broadcast.emit("callEnded");
+    });
 
-	socket.on("answerCall", (data) => {
-		io.to(data.to).emit("callAccepted", data.signal);
-	});
+    socket.on("callUser", (data) => {
+        io.to(data.userToCall).emit("callUser", { signal: data.signalData, from: data.from, name: data.name });
+    });
+
+    socket.on("answerCall", (data) => {
+        io.to(data.to).emit("callAccepted", data.signal);
+    });
 });
 
 const PORT = process.env.PORT || 5000;

@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
 
-// DEBUG LOGS KE SAATH CONNECTION
-const socket = io.connect("https://az-chat.onrender.com", {
+// Localhost hata kar wapas apna Render link dalo:
+const socket = io.connect("https://az-chat.onrender.com", { 
     transports: ["websocket"],
     reconnectionAttempts: 5
 });
@@ -34,9 +34,14 @@ function App() {
             })
             .catch(err => addLog("Camera Fail: " + err.message));
 
-        socket.on("connect", () => addLog("Connected to Server ✅"));
+        socket.on("connect", () => {
+            addLog("Connected to Server ✅");
+            console.log("Connected with ID:", socket.id); // Console check
+        });
+
         socket.on("connect_error", (err) => addLog("Conn Error: " + err.message));
         
+        // ID Listen karein
         socket.on("me", (id) => {
             setMe(id);
             addLog("Got ID: " + id);
@@ -95,11 +100,12 @@ function App() {
     return (
         <div style={{ textAlign: "center", background: "#f0f2f5", minHeight: "100vh", padding: "10px", fontFamily: "monospace" }}>
             
-            {/* BLACK BOX - AGAR YE DIKHA TOH UPDATE HO GAYA */}
+            {/* BLACK BOX */}
             <div style={{background: "black", color: "#0f0", padding: "15px", marginBottom: "20px", border: "2px solid red"}}>
-                <h3>📢 STATUS LOGS (V7)</h3>
+                <h3>📢 STATUS LOGS (LOCAL)</h3>
                 <p>{logs}</p>
-                <p style={{color: "yellow"}}>My ID: {me || "Waiting..."}</p>
+                {/* ID AB DIKHNI CHAHIYE */}
+                <p style={{color: "yellow", fontSize: "20px"}}>My ID: {me || "Waiting..."}</p>
             </div>
             
             <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
