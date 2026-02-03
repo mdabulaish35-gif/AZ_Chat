@@ -143,7 +143,7 @@ function App() {
     return (
         <div style={{ padding: "20px", background: "#282c34", minHeight: "100vh", textAlign: "center", color: "white" }}>
             
-            <h1>👨‍👩‍👦‍👦 Group Video Chat</h1>
+            <h1>A-Z Video Chat </h1>
             
             {!joined ? (
                 <div style={{marginTop: "50px"}}>
@@ -155,7 +155,7 @@ function App() {
                     />
                     <br/><br/>
                     <button onClick={joinRoom} style={{padding: "10px 20px", background: "#4CAF50", color: "white", border: "none", cursor: "pointer", fontSize: "18px"}}>
-                        Join Room
+                        Call Now
                     </button>
                     <div style={{marginTop: "30px"}}>
                         <video muted ref={userVideoRef} autoPlay playsInline style={{width: "300px", border: "2px solid red"}} />
