@@ -5,30 +5,40 @@ import Peer from "simple-peer";
 // Render Link
 const socket = io.connect("https://az-chat.onrender.com");
 
-// --- VIDEO COMPONENT ---
+// --- VIDEO COMPONENT (FIXED) ---
 const Video = (props) => {
     const ref = useRef();
     
     useEffect(() => {
+        // 1. Agar abhi stream aayi, toh play karo
         props.peer.on("stream", stream => {
             if(ref.current) ref.current.srcObject = stream;
-        })
+        });
+
+        // 2. [IMPORTANT FIX] Agar stream PEHLE hi aa chuki thi (aur humne miss kar di)
+        // toh usko 'simple-peer' ke andar se dhoondh kar chala do.
+        // '_remoteStreams' ek hidden property hoti hai jahan stream store hoti hai.
+        if (props.peer._remoteStreams && props.peer._remoteStreams.length > 0) {
+            if(ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
+        }
+        
         // eslint-disable-next-line
     }, []);
 
     return (
         <div style={{margin: "10px", position: "relative"}}>
             <video playsInline autoPlay ref={ref} style={{width: "250px", border: "2px solid #00ff00", borderRadius: "10px"}} />
+            <p style={{position: "absolute", bottom: "10px", left: "10px", background: "rgba(0,0,0,0.5)", color: "white", padding: "2px 5px", margin: 0}}>User</p>
         </div>
     );
 }
 
 function App() {
-    const [peers, setPeers] = useState([]); // Sab dosto ki list
-    const [roomID, setRoomID] = useState(""); // Room ka naam
-    const [joined, setJoined] = useState(false); // Room join kiya ya nahi
+    const [peers, setPeers] = useState([]);
+    const [roomID, setRoomID] = useState("");
+    const [joined, setJoined] = useState(false);
     const userVideoRef = useRef();
-    const peersRef = useRef([]); // Internal Logic ke liye reference
+    const peersRef = useRef([]);
 
     useEffect(() => {
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
@@ -37,7 +47,6 @@ function App() {
                 userVideoRef.current.srcObject = stream;
             }
 
-            // 1. Jab server bole "Ye rahe baaki log"
             socket.on("all users", users => {
                 const peers = [];
                 users.forEach(userID => {
@@ -51,7 +60,6 @@ function App() {
                 setPeers(peers);
             })
 
-            // 2. Jab koi naya banda room me aaye
             socket.on("user joined", payload => {
                 const peer = addPeer(payload.signal, payload.callerID, stream);
                 peersRef.current.push({
@@ -61,7 +69,6 @@ function App() {
                 setPeers(users => [...users, peer]);
             });
 
-            // 3. Jab signal wapas aaye (Handshake complete)
             socket.on("receiving returned signal", payload => {
                 const item = peersRef.current.find(p => p.peerID === payload.id);
                 item.peer.signal(payload.signal);
@@ -70,7 +77,6 @@ function App() {
         // eslint-disable-next-line
     }, []);
 
-    // --- LOGIC: Connection banana (Initiator) ---
     function createPeer(userToSignal, callerID, stream) {
         const peer = new Peer({
             initiator: true,
@@ -91,7 +97,6 @@ function App() {
         return peer;
     }
 
-    // --- LOGIC: Incoming Call uthana (Receiver) ---
     function addPeer(incomingSignal, callerID, stream) {
         const peer = new Peer({
             initiator: false,
@@ -114,7 +119,6 @@ function App() {
         return peer;
     }
 
-    // Button Click par room join karna
     const joinRoom = () => {
         if(roomID !== ""){
             socket.emit("join room", roomID);
@@ -129,7 +133,6 @@ function App() {
             
             <h1>👨‍👩‍👦‍👦 Group Video Chat</h1>
             
-            {/* Login Screen */}
             {!joined ? (
                 <div style={{marginTop: "50px"}}>
                     <input 
@@ -148,15 +151,12 @@ function App() {
                     </div>
                 </div>
             ) : (
-                // Video Screen
                 <div style={{display: "flex", flexWrap: "wrap", justifyContent: "center"}}>
-                    {/* MERI VIDEO */}
                     <div style={{margin: "10px", position: "relative"}}>
                         <video muted ref={userVideoRef} autoPlay playsInline style={{width: "250px", border: "2px solid #61dafb", borderRadius: "10px"}} />
-                        <p style={{position: "absolute", bottom: "10px", left: "10px", background: "black"}}>Me</p>
+                        <p style={{position: "absolute", bottom: "10px", left: "10px", background: "black", margin: 0, padding: "2px 5px"}}>Me</p>
                     </div>
 
-                    {/* DOSTO KI VIDEOS */}
                     {peers.map((peer, index) => {
                         return (
                             <Video key={index} peer={peer} />
