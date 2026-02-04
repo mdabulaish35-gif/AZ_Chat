@@ -191,7 +191,7 @@ function App() {
                 // --- MODERN JOIN CARD ---
                 <div style={styles.loginContainer}>
                     <div style={styles.loginCard}>
-                        <h2 style={{color: "white", marginBottom: "5px"}}>Join Meeting</h2>
+                        <h2 style={{color: "white", marginBottom: "5px"}}>TAlk Now</h2>
                         <p style={{color: "#aaa", marginBottom: "30px", fontSize: "14px"}}>Enter a room name to start talking</p>
                         
                         <input 
