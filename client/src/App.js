@@ -202,11 +202,11 @@ function App() {
                             <p style={{position: "absolute", bottom: "10px", left: "10px", background: "black", margin: 0, padding: "2px 5px"}}>Me {micOn ? "" : "(Muted)"}</p>
                         </div>
 
-                        {peers.map((peer, index) => {
+                        {peers.map((peer) => { // 'index' hata diya
                             return (
-                                <Video key={index} peer={peer} />
+                                <Video key={peer.peerID} peer={peer} /> // 'key' me ID daal di
                             );
-                        })}
+            })}
                     </div>
 
                     <div style={{
