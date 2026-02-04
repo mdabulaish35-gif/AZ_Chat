@@ -75,17 +75,24 @@ function App() {
     const [bigMe, setBigMe] = useState(false);
     const [facingMode, setFacingMode] = useState("user");
 
+    // --- NEW: Track karo ki Leave Button dabaya ya nahi ---
+    const isLeaving = useRef(false);
+
     const userVideoRef = useRef();
     const peersRef = useRef([]);
     const streamRef = useRef();
 
     const isOneOnOne = peers.length === 1;
 
-    // --- REFRESH PROTECTION ---
+    // --- UPDATED: REFRESH PROTECTION ---
     useEffect(() => {
         const handleBeforeUnload = (event) => {
+            // Agar Leave Button dabaya hai, to Popup mat dikhao
+            if (isLeaving.current) return;
+
+            // Agar Joined hai aur galti se refresh/back kiya, to Popup dikhao
             if (joined) {
-                const message = "Call cut ho jayegi! Are you sure?";
+                const message = "Are you sure you want to leave?";
                 event.returnValue = message;
                 return message;
             }
@@ -241,7 +248,11 @@ function App() {
         }
     };
 
-    const leaveRoom = () => window.location.reload();
+    // --- UPDATED: Leave Room Function ---
+    const leaveRoom = () => {
+        isLeaving.current = true; // Set flag to true (Intentional Leave)
+        window.location.reload();
+    };
 
     const getPeerStyle = () => {
         if (!isOneOnOne) return styles.videoCard; 
@@ -270,8 +281,7 @@ function App() {
             {!joined ? (
                 <div style={styles.loginContainer}>
                     <div style={styles.loginCard}>
-                        {/* --- UI Change: Join Meeting Upar, Text Niche --- */}
-                        <h2 style={{ color: "white", marginTop: "0", marginBottom: "10px" }}>Join Meeting</h2>
+                        <h2 style={{ color: "white", marginTop: "0", marginBottom: "10px" }}>TAlk Now</h2>
                         
                         <h4 style={{ color: "#4CAF50", marginTop: "0", marginBottom: "30px", fontWeight: "normal", fontSize: "18px" }}>
                             Enter Room Name To Talk
@@ -344,6 +354,8 @@ const styles = {
     loginCard: { background: "#1e1e1e", padding: "30px", borderRadius: "15px", textAlign: "center", width: "90%", maxWidth: "400px", border: "1px solid #333" },
     input: { width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #333", background: "#2c2c2c", color: "white", fontSize: "16px", marginBottom: "20px", outline: "none", boxSizing: "border-box" },
     joinBtn: { width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: "#2196F3", color: "white", fontSize: "16px", cursor: "pointer" },
+    
+    // --- UPDATED GRID LAYOUT (Auto Fit) ---
     gridContainer: { 
         flex: 1, 
         display: "flex", 
@@ -362,7 +374,8 @@ const styles = {
         borderRadius: "12px", 
         overflow: "hidden", 
         border: "1px solid #333", 
-        flex: "1 1 45%", // 2 videos per row on mobile
+        // 40% Width ensures 2 items fit in one row (with gap)
+        flex: "1 1 40%", 
         minWidth: "140px", 
         maxWidth: "600px", 
         aspectRatio: "1.33", 
