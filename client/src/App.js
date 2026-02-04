@@ -25,6 +25,7 @@ const Video = (props) => {
         if (props.peer._remoteStreams && props.peer._remoteStreams.length > 0) {
             if(ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -32,7 +33,7 @@ const Video = (props) => {
             style={props.customStyle || styles.videoCard} 
             onTouchStart={props.onTouchStart} 
             onTouchMove={props.onTouchMove}
-            onClick={props.onClick} // Click event added
+            onClick={props.onClick} 
         >
             <video playsInline autoPlay ref={ref} style={styles.videoElement} />
             <div style={styles.nameTag}>Participant</div>
@@ -52,7 +53,7 @@ function App() {
     // Position for Floating Video
     const [pos, setPos] = useState({ x: window.innerWidth - 130, y: window.innerHeight - 250 });
     
-    // NEW: Kya "Me" video bada hona chahiye?
+    // Toggle Size State
     const [bigMe, setBigMe] = useState(false);
 
     const userVideoRef = useRef();
@@ -177,7 +178,6 @@ function App() {
     const leaveRoom = () => window.location.reload();
 
     // --- STYLE CALCULATOR ---
-    // Helper to calculate styles dynamically
     const getPeerStyle = () => {
         if (!isOneOnOne) return styles.videoCard; // Group mode
         return bigMe ? { ...styles.floatingMe, left: pos.x, top: pos.y } : styles.oneOnOnePeer;
@@ -216,14 +216,13 @@ function App() {
                         
                         {/* 1. DOST VIDEO */}
                         {peers.map((peer) => {
-                            // Agar bigMe true hai, toh DOST chhota (floating) hoga aur draggable hoga
                             return (
                                 <Video 
                                     key={peer.peerID} 
                                     peer={peer} 
                                     customStyle={getPeerStyle()}
-                                    onClick={bigMe ? toggleView : null} // Click karke swap karo
-                                    onTouchMove={bigMe ? handleTouchMove : null} // Agar chhota hai to drag karo
+                                    onClick={bigMe ? toggleView : null}
+                                    onTouchMove={bigMe ? handleTouchMove : null}
                                 />
                             );
                         })}
@@ -231,12 +230,11 @@ function App() {
                         {/* 2. ME VIDEO */}
                         <div 
                             style={getMeStyle()}
-                            onClick={!bigMe ? toggleView : null} // Click karke swap karo
-                            onTouchMove={!bigMe ? handleTouchMove : null} // Agar chhota hai to drag karo
+                            onClick={!bigMe ? toggleView : null} 
+                            onTouchMove={!bigMe ? handleTouchMove : null}
                         >
                             <video muted ref={userVideoRef} autoPlay playsInline style={styles.videoElement} />
                             
-                            {/* Agar Full Screen hai toh naam mat dikhao, agar floating hai to dikhao mat (cleaner) */}
                             {!isOneOnOne && <div style={styles.nameTag}>You</div>}
                             
                             <div style={{...styles.statusDot, background: micOn ? "#4CAF50" : "#f44336"}}></div>
