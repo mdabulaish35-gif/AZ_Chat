@@ -25,6 +25,7 @@ const Video = (props) => {
         if (props.peer._remoteStreams && props.peer._remoteStreams.length > 0) {
             if(ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
         }
+        // eslint-disable-next-line
     }, []);
 
     return (
@@ -50,12 +51,18 @@ function App() {
     useEffect(() => {
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(currentStream => {
             setStream(currentStream);
-            
+            if (userVideoRef.current) {
+                userVideoRef.current.srcObject = currentStream;
+            }
+
             socket.on("all users", users => {
                 const peers = [];
                 users.forEach(userID => {
                     const peer = createPeer(userID, socket.id, currentStream);
-                    peersRef.current.push({ peerID: userID, peer })
+                    peersRef.current.push({
+                        peerID: userID,
+                        peer,
+                    })
                     peers.push(peer);
                 })
                 setPeers(peers);
@@ -63,7 +70,10 @@ function App() {
 
             socket.on("user joined", payload => {
                 const peer = addPeer(payload.signal, payload.callerID, currentStream);
-                peersRef.current.push({ peerID: payload.callerID, peer })
+                peersRef.current.push({
+                    peerID: payload.callerID,
+                    peer,
+                })
                 setPeers(users => [...users, peer]);
             });
 
@@ -72,9 +82,12 @@ function App() {
                 item.peer.signal(payload.signal);
             });
 
-            socket.on("user left", id => {
+             // User Left Logic
+             socket.on("user left", id => {
                 const peerObj = peersRef.current.find(p => p.peerID === id);
-                if(peerObj) peerObj.peer.destroy();
+                if(peerObj) {
+                    peerObj.peer.destroy();
+                }
                 const peers = peersRef.current.filter(p => p.peerID !== id);
                 peersRef.current = peers;
                 setPeers(peers);
@@ -94,9 +107,18 @@ function App() {
             initiator: true,
             trickle: false,
             stream,
-            config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] }
+            config: {
+                iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:global.stun.twilio.com:3478" }
+                ]
+            }
         });
-        peer.on("signal", signal => socket.emit("sending signal", { userToSignal, callerID, signal }));
+
+        peer.on("signal", signal => {
+            socket.emit("sending signal", { userToSignal, callerID, signal })
+        })
+
         return peer;
     }
 
@@ -105,19 +127,29 @@ function App() {
             initiator: false,
             trickle: false,
             stream,
-            config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] }
+            config: {
+                iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:global.stun.twilio.com:3478" }
+                ]
+            }
         });
-        peer.on("signal", signal => socket.emit("returning signal", { signal, callerID }));
+
+        peer.on("signal", signal => {
+            socket.emit("returning signal", { signal, callerID })
+        })
+
         peer.signal(incomingSignal);
+
         return peer;
     }
 
     const joinRoom = () => {
-        if(roomID !== "") {
+        if(roomID !== ""){
             socket.emit("join room", roomID);
             setJoined(true);
         } else {
-            alert("Please enter a Room Name");
+            alert("Room Name daalo!");
         }
     }
 
@@ -141,15 +173,16 @@ function App() {
         }
     };
 
-    const leaveRoom = () => window.location.reload();
+    const leaveRoom = () => {
+        window.location.reload();
+    };
 
-    // --- RENDER ---
     return (
         <div style={styles.container}>
             {/* Header / Logo */}
             <div style={styles.header}>
                 <h2 style={{margin:0, color: "#fff", display: "flex", alignItems: "center", gap: "10px"}}>
-                    📹 <span style={{fontWeight: 300}}>AZ</span><span style={{fontWeight: "bold"}}>Video Talk</span>
+                    📹 <span style={{fontWeight: 300}}>AZ</span><span style={{fontWeight: "bold"}}>Chat</span>
                 </h2>
                 {joined && <div style={styles.roomBadge}>Room: {roomID}</div>}
             </div>
@@ -186,7 +219,9 @@ function App() {
 
                         {/* Other Videos */}
                         {peers.map((peer) => {
-                            return <Video key={peer.peerID} peer={peer} />;
+                            return (
+                                <Video key={peer.peerID} peer={peer} />
+                            );
                         })}
                     </div>
 
