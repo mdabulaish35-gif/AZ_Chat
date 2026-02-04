@@ -262,7 +262,7 @@ function App() {
         <div style={styles.container} onMouseMove={handleDragMove} onMouseUp={handleDragEnd}>
             <div style={styles.header}>
                 <h2 style={{ margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "10px", fontSize: "1.2rem" }}>
-                    📹 <span style={{ fontWeight: 300 }}>AZ</span><span style={{ fontWeight: "bold" }}> Chat</span>
+                    📹 <span style={{ fontWeight: 300 }}>Abulaish</span><span style={{ fontWeight: "bold" }}>Video Chat</span>
                 </h2>
                 {joined && <div style={styles.roomBadge}>Room: {roomID}</div>}
             </div>
@@ -274,13 +274,13 @@ function App() {
                         <h2 style={{ color: "white", marginTop: "0", marginBottom: "10px" }}>Join Meeting</h2>
                         
                         <h4 style={{ color: "#4CAF50", marginTop: "0", marginBottom: "30px", fontWeight: "normal", fontSize: "18px" }}>
-                            Enter Name To Talk
+                            Enter Room Name To Talk
                         </h4>
                         
                         <input
                             type="text"
                             name="room"
-                            placeholder="Enter Room Name"
+                            placeholder="Enter Room Name Here"
                             onChange={(e) => setRoomID(e.target.value)}
                             style={styles.input}
                         />
