@@ -1,20 +1,22 @@
 /* eslint-disable */
-// ---------------------------------------------------------
-// MAGIC LINE: Upar wali line errors ko ignore karegi
-// ---------------------------------------------------------
-
-// --- CRASH FIXES (Inhe sabse upar rehna ZAROORI hai) ---
-import * as process from "process";
-if (typeof window !== 'undefined') {
-    window.global = window;
-    window.process = process;
-    window.Buffer = window.Buffer || require("buffer").Buffer;
-}
-
-// --- IMPORTS ---
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
-import Peer from "simple-peer";
+
+// --- 1. POLYFILLS (CRASH FIX) ---
+// Yeh code library load hone se pehle environment set karta hai
+if (typeof window !== 'undefined') {
+    window.global = window;
+    window.process = window.process || { env: { NODE_DEBUG: undefined } };
+    try {
+        window.Buffer = window.Buffer || require("buffer").Buffer;
+    } catch (e) {
+        console.log("Buffer load warning");
+    }
+}
+
+// --- 2. LOAD PEER (IMP: Use require here) ---
+// Hum 'import' nahi use kar rahe taaki ye Polyfills ke BAAD load ho
+const Peer = require("simple-peer");
 
 // Render Link
 const socket = io.connect("https://az-chat.onrender.com");
@@ -37,12 +39,11 @@ const Video = (props) => {
             props.peer.on("stream", stream => {
                 if (ref.current) ref.current.srcObject = stream;
             });
-            // Handle existing streams
             if (props.peer._remoteStreams && props.peer._remoteStreams.length > 0) {
                 if (ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
             }
         }
-    }, []); // eslint-disable-line
+    }, []); 
 
     return (
         <div
@@ -158,7 +159,8 @@ function App() {
         return () => {
             socket.off("user left");
         };
-    }, []); // eslint-disable-line
+        // eslint-disable-next-line
+    }, []);
 
     const startVideo = (mode) => {
         navigator.mediaDevices.getUserMedia({ video: { facingMode: mode }, audio: true })
@@ -197,7 +199,7 @@ function App() {
         if (joined && stream && userVideoRef.current) {
             userVideoRef.current.srcObject = stream;
         }
-    }, [joined, stream]); // eslint-disable-line
+    }, [joined, stream]);
 
     function createPeer(userToSignal, callerID, stream) {
         if(!stream) return null;
