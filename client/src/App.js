@@ -229,29 +229,31 @@ function App() {
         <div style={styles.container}>
             <div style={styles.header}>
                 <h2 style={{margin:0, color: "#fff", display: "flex", alignItems: "center", gap: "10px", fontSize: "1.2rem"}}>
-                    📹 <span style={{fontWeight: 300}}>AZ</span><span style={{fontWeight: "bold"}}>Chat</span>
+                    📹 <span style={{fontWeight: 300}}>Abulaish</span><span style={{fontWeight: "bold"}}> Video Chat</span>
                 </h2>
                 {joined && <div style={styles.roomBadge}>Room: {roomID}</div>}
             </div>
 
             {!joined ? (
-                <div style={styles.loginContainer}>
-                    <div style={styles.loginCard}>
-                        {/* --- CHANGED TEXT --- */}
-                        <h4 style={{color: "#4CAF50", marginBottom: "5px", textTransform: "uppercase"}}>Enter number to talk</h4>
-                        <h2 style={{color: "white", marginTop: "0", marginBottom: "20px"}}>Join Meeting</h2>
-                        
-                        <input 
-                            type="text" 
-                            placeholder="Enter Room Name" 
-                            onChange={(e) => setRoomID(e.target.value)} 
-                            style={styles.input}
-                        />
-                        <button onClick={joinRoom} style={styles.joinBtn}>Join Now</button>
+                <div style={styles.loginCard}>
+                    {/* 1. Join Meeting ab Upar hai */}
+                    <h2 style={{color: "white", marginTop: "0", marginBottom: "10px"}}>TAlk Now</h2>
+    
+                    {/* 2. Text niche aa gaya, aur Uppercase hata diya */}
+                    <h4 style={{color: "#4CAF50", marginTop: "0", marginBottom: "30px", fontWeight: "normal"}}>
+                        Enter Room Name To Talk
+                    </h4>
+    
+                    <input 
+                         type="text" 
+                        placeholder="Enter Room Name(e.g. Abu12...)" 
+                        onChange={(e) => setRoomID(e.target.value)} 
+                        style={styles.input}
+                    />
+                    <button onClick={joinRoom} style={styles.joinBtn}>Join Now</button>
                     </div>
-                </div>
-            ) : (
-                <>
+                     ) : (
+                    <>
                     <div style={styles.gridContainer}>
                         
                         {/* 1. DOST VIDEO */}
