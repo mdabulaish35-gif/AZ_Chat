@@ -19,11 +19,14 @@ const Video = (props) => {
     const ref = useRef();
 
     useEffect(() => {
-        props.peer.on("stream", stream => {
-            if (ref.current) ref.current.srcObject = stream;
-        });
-        if (props.peer._remoteStreams && props.peer._remoteStreams.length > 0) {
-            if (ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
+        if (props.peer) {
+            props.peer.on("stream", stream => {
+                if (ref.current) ref.current.srcObject = stream;
+            });
+            // Handle existing streams if any
+            if (props.peer._remoteStreams && props.peer._remoteStreams.length > 0) {
+                if (ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
+            }
         }
         // eslint-disable-next-line
     }, []);
@@ -59,7 +62,7 @@ function App() {
 
     const userVideoRef = useRef();
     const peersRef = useRef([]);
-    const streamRef = useRef(); // To keep track of current stream
+    const streamRef = useRef();
 
     const isOneOnOne = peers.length === 1;
 
@@ -86,6 +89,8 @@ function App() {
             const peers = [];
             users.forEach(userID => {
                 const peer = createPeer(userID, socket.id, streamRef.current);
+                // --- FIX: Attach ID to peer object to prevent Crash ---
+                peer.peerID = userID; 
                 peersRef.current.push({ peerID: userID, peer });
                 peers.push(peer);
             })
@@ -94,6 +99,8 @@ function App() {
 
         socket.on("user joined", payload => {
             const peer = addPeer(payload.signal, payload.callerID, streamRef.current);
+            // --- FIX: Attach ID to peer object to prevent Crash ---
+            peer.peerID = payload.callerID;
             peersRef.current.push({ peerID: payload.callerID, peer });
             setPeers(users => [...users, peer]);
         });
@@ -129,16 +136,23 @@ function App() {
                     userVideoRef.current.srcObject = currentStream;
                 }
 
-                // If peers exist, replace track (for switching camera mid-call)
+                // Replace tracks for existing peers (Flip Camera)
                 peersRef.current.forEach(({ peer }) => {
                     if (peer && !peer.destroyed) {
-                        const oldVideoTrack = peer.streams[0]?.getVideoTracks()[0];
-                        const newVideoTrack = currentStream.getVideoTracks()[0];
-                        if (oldVideoTrack && newVideoTrack) {
-                            peer.replaceTrack(oldVideoTrack, newVideoTrack, peer.streams[0]);
+                        // Safety check to prevent crash if stream is missing
+                        if (peer.streams && peer.streams[0]) {
+                            const oldVideoTrack = peer.streams[0].getVideoTracks()[0];
+                            const newVideoTrack = currentStream.getVideoTracks()[0];
+                            if (oldVideoTrack && newVideoTrack) {
+                                peer.replaceTrack(oldVideoTrack, newVideoTrack, peer.streams[0]);
+                            }
                         }
                     }
                 });
+            })
+            .catch(err => {
+                console.error("Camera Error:", err);
+                alert("Camera access denied or not available!");
             });
     };
 
@@ -222,7 +236,7 @@ function App() {
         <div style={styles.container}>
             <div style={styles.header}>
                 <h2 style={{ margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "10px", fontSize: "1.2rem" }}>
-                    📹 <span style={{ fontWeight: 300 }}>Abulaish</span><span style={{ fontWeight: "bold" }}> Video Chat</span>
+                    📹 <span style={{ fontWeight: 300 }}>AZ</span><span style={{ fontWeight: "bold" }}> Video Chat</span>
                 </h2>
                 {joined && <div style={styles.roomBadge}>Room: {roomID}</div>}
             </div>
@@ -231,16 +245,16 @@ function App() {
                 <div style={styles.loginContainer}>
                     <div style={styles.loginCard}>
                         {/* 1. Join Meeting ab Upar hai */}
-                        <h2 style={{ color: "white", marginTop: "0", marginBottom: "10px" }}>TAlk Now</h2>
+                        <h2 style={{ color: "white", marginTop: "0", marginBottom: "10px" }}>Join Meeting</h2>
 
-                        {/* 2. Text niche aa gaya, aur Uppercase hata diya */}
+                        {/* 2. Text niche aa gaya, normal case */}
                         <h4 style={{ color: "#4CAF50", marginTop: "0", marginBottom: "30px", fontWeight: "normal" }}>
-                            Enter Room Name To Talk
+                            Enter Number To Talk
                         </h4>
 
                         <input
                             type="text"
-                            placeholder="Enter Room Name(e.g. Abu12...)"
+                            placeholder="Enter Room Name"
                             onChange={(e) => setRoomID(e.target.value)}
                             style={styles.input}
                         />
@@ -250,12 +264,11 @@ function App() {
             ) : (
                 <>
                     <div style={styles.gridContainer}>
-
                         {/* 1. DOST VIDEO */}
                         {peers.map((peer) => {
                             return (
                                 <Video
-                                    key={peer.peerID}
+                                    key={peer.peerID} // ID is now guaranteed
                                     peer={peer}
                                     customStyle={getPeerStyle()}
                                     onClick={bigMe ? toggleView : null}
@@ -271,12 +284,9 @@ function App() {
                             onTouchMove={!bigMe ? handleTouchMove : null}
                         >
                             <video muted ref={userVideoRef} autoPlay playsInline style={styles.videoElement} />
-
                             {!isOneOnOne && <div style={styles.nameTag}>You</div>}
-
                             <div style={{ ...styles.statusDot, background: micOn ? "#4CAF50" : "#f44336" }}></div>
                         </div>
-
                     </div>
 
                     <div style={styles.controlsBar}>
@@ -367,7 +377,7 @@ const styles = {
         cursor: "pointer",
     },
 
-    // --- UPDATED GRID (Scrollable & Fix Size) ---
+    // --- GRID (Scrollable & Fix Size) ---
     gridContainer: {
         flex: 1,
         display: "flex",
@@ -377,7 +387,7 @@ const styles = {
         gap: "10px",
         padding: "10px",
         paddingBottom: "100px",
-        overflowY: "auto", // SCROLL ENABLED FOR PHONE
+        overflowY: "auto",
         position: "relative"
     },
     videoCard: {
@@ -386,11 +396,10 @@ const styles = {
         borderRadius: "12px",
         overflow: "hidden",
         border: "1px solid #333",
-        // LAPTOP FIX: Max Height set kiya taki screen se bahar na jaye
         maxHeight: "45vh",
         flex: "1 1 300px",
         maxWidth: "600px",
-        aspectRatio: "1.33", // Standard 4:3 Aspect Ratio
+        aspectRatio: "1.33",
         minWidth: "250px"
     },
     oneOnOnePeer: {
@@ -417,14 +426,12 @@ const styles = {
         background: "#000",
         touchAction: "none"
     },
-    // --- VIDEO FULL VIEW (CONTAIN) ---
     videoElement: {
         width: "100%",
         height: "100%",
-        // object-fit: contain (Puri video dikhegi, kategi nahi)
         objectFit: "contain",
         transform: "scaleX(-1)",
-        background: "#000" // Khali jagah black rahegi
+        background: "#000"
     },
     nameTag: {
         position: "absolute",
@@ -456,7 +463,7 @@ const styles = {
         gap: "15px",
         zIndex: 100,
         maxWidth: "95%",
-        overflowX: "auto" // Agar buttons jyada ho to scroll ho jaye
+        overflowX: "auto"
     },
     controlBtn: {
         width: "45px",
