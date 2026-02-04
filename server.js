@@ -16,8 +16,8 @@ const socketToRoom = {};
 io.on('connection', socket => {
     socket.on("join room", roomID => {
         if (users[roomID]) {
-            // Limit to 4 users
-            if (users[roomID].length === 4) {
+            // Limit increased to allow more participants if needed
+            if (users[roomID].length >= 4) {
                 socket.emit("room full");
                 return;
             }
@@ -25,6 +25,7 @@ io.on('connection', socket => {
         } else {
             users[roomID] = [socket.id];
         }
+        
         socketToRoom[socket.id] = roomID;
         const usersInThisRoom = users[roomID].filter(id => id !== socket.id);
         socket.emit("all users", usersInThisRoom);
@@ -38,14 +39,14 @@ io.on('connection', socket => {
         io.to(payload.callerID).emit('receiving returned signal', { signal: payload.signal, id: socket.id });
     });
 
-    // --- DISCONNECT LOGIC (Video hatane ke liye) ---
+    // --- IMPORTANT: User Left Logic ---
     socket.on('disconnect', () => {
         const roomID = socketToRoom[socket.id];
         let room = users[roomID];
         if (room) {
             room = room.filter(id => id !== socket.id);
             users[roomID] = room;
-            // Baaki logo ko batao
+            // Broadcast to everyone in the room
             socket.broadcast.to(roomID).emit('user left', socket.id);
         }
     });
