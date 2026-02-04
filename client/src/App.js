@@ -182,7 +182,7 @@ function App() {
             {/* Header / Logo */}
             <div style={styles.header}>
                 <h2 style={{margin:0, color: "#fff", display: "flex", alignItems: "center", gap: "10px"}}>
-                    📹 <span style={{fontWeight: 300}}>AZ</span><span style={{fontWeight: "bold"}}>Chat</span>
+                    📹 <span style={{fontWeight: 300}}>Abulaish</span><span style={{fontWeight: "bold"}}>Video Chat</span>
                 </h2>
                 {joined && <div style={styles.roomBadge}>Room: {roomID}</div>}
             </div>
@@ -196,7 +196,7 @@ function App() {
                         
                         <input 
                             type="text" 
-                            placeholder="Enter Room Name (e.g. Friends)" 
+                            placeholder="Enter Room Name (e.g. Abu123..)" 
                             onChange={(e) => setRoomID(e.target.value)} 
                             style={styles.input}
                         />
