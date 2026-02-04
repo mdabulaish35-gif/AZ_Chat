@@ -10,15 +10,15 @@ const io = socket(server, {
     }
 });
 
-const users = {}; 
-const socketToRoom = {}; 
+const users = {};
+const socketToRoom = {};
 
 io.on('connection', socket => {
     
     socket.on("join room", roomID => {
         if (users[roomID]) {
             const length = users[roomID].length;
-            if (length === 4) { 
+            if (length === 4) {
                 socket.emit("room full");
                 return;
             }
@@ -29,7 +29,7 @@ io.on('connection', socket => {
         
         socketToRoom[socket.id] = roomID;
         const usersInThisRoom = users[roomID].filter(id => id !== socket.id);
-        
+
         socket.emit("all users", usersInThisRoom);
     });
 
@@ -41,7 +41,7 @@ io.on('connection', socket => {
         io.to(payload.callerID).emit('receiving returned signal', { signal: payload.signal, id: socket.id });
     });
 
-    // --- YAHAN CHANGE HUA HAI (Disconnect Logic) ---
+    // --- YEH HAI WO MISSING LOGIC (USER LEFT) ---
     socket.on('disconnect', () => {
         const roomID = socketToRoom[socket.id];
         let room = users[roomID];
@@ -50,11 +50,10 @@ io.on('connection', socket => {
             room = room.filter(id => id !== socket.id);
             users[roomID] = room;
             
-            // BAAKI LOGO KO BATAO: "Yeh banda chala gaya, iski video hata do"
+            // Baaki logon ko batao: "User Chala Gaya"
             socket.broadcast.to(roomID).emit('user left', socket.id);
         }
     });
-
 });
 
 const PORT = process.env.PORT || 5000;
