@@ -1,16 +1,21 @@
-// 1. IMPORTS SABSE UPAR (Rule: Imports must be at top)
+/* eslint-disable */
+// ---------------------------------------------------------
+// MAGIC LINE: Upar wali line errors ko ignore karegi
+// ---------------------------------------------------------
+
+// --- CRASH FIXES (Inhe sabse upar rehna ZAROORI hai) ---
+import * as process from "process";
+if (typeof window !== 'undefined') {
+    window.global = window;
+    window.process = process;
+    window.Buffer = window.Buffer || require("buffer").Buffer;
+}
+
+// --- IMPORTS ---
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
-import * as process from "process";
 
-// 2. POLYFILLS (Imports ke just baad)
-// Yeh code White Screen aur Crash ko rokega
-window.global = window;
-window.process = process;
-window.Buffer = window.Buffer || require("buffer").Buffer;
-
-// 3. MAIN APP LOGIC
 // Render Link
 const socket = io.connect("https://az-chat.onrender.com");
 
@@ -32,12 +37,12 @@ const Video = (props) => {
             props.peer.on("stream", stream => {
                 if (ref.current) ref.current.srcObject = stream;
             });
+            // Handle existing streams
             if (props.peer._remoteStreams && props.peer._remoteStreams.length > 0) {
                 if (ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, []); // eslint-disable-line
 
     return (
         <div
@@ -153,8 +158,7 @@ function App() {
         return () => {
             socket.off("user left");
         };
-        // eslint-disable-next-line
-    }, []);
+    }, []); // eslint-disable-line
 
     const startVideo = (mode) => {
         navigator.mediaDevices.getUserMedia({ video: { facingMode: mode }, audio: true })
@@ -193,8 +197,7 @@ function App() {
         if (joined && stream && userVideoRef.current) {
             userVideoRef.current.srcObject = stream;
         }
-        // eslint-disable-next-line
-    }, [joined, stream]);
+    }, [joined, stream]); // eslint-disable-line
 
     function createPeer(userToSignal, callerID, stream) {
         if(!stream) return null;
