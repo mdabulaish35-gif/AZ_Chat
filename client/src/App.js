@@ -1,12 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
-import * as process from "process";
 
-// --- CRASH FIXES (Imports ke baad lagaya hai taaki Red Error na aaye) ---
-window.global = window;
-window.process = process;
-window.Buffer = window.Buffer || require("buffer").Buffer;
+// --- POLYFILLS (Crash Fix - Imports ke niche) ---
+// Ye line White Screen aur Process error ko rokti hai
+if (typeof window !== 'undefined') {
+    window.process = window.process || { env: { NODE_DEBUG: undefined } };
+    window.global = window;
+    // Buffer safety check
+    try {
+        window.Buffer = window.Buffer || require("buffer").Buffer;
+    } catch (e) {
+        console.log("Buffer load failed, video might be unstable");
+    }
+}
 
 // Render Link
 const socket = io.connect("https://az-chat.onrender.com");
@@ -33,18 +40,20 @@ const Video = (props) => {
                 if (ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
         <div
             style={props.customStyle || styles.videoCard}
-            onTouchStart={props.onDragStart}
-            onTouchMove={props.onDragMove}
-            onTouchEnd={props.onDragEnd}
+            // Laptop Mouse Events
             onMouseDown={props.onDragStart}
             onMouseMove={props.onDragMove}
             onMouseUp={props.onDragEnd}
+            // Mobile Touch Events
+            onTouchStart={props.onDragStart}
+            onTouchMove={props.onDragMove}
+            onTouchEnd={props.onDragEnd}
             onClick={props.onClick}
         >
             <video playsInline autoPlay ref={ref} style={styles.videoElement} />
@@ -115,7 +124,7 @@ function App() {
             users.forEach(userID => {
                 const peer = createPeer(userID, socket.id, streamRef.current);
                 if(peer) {
-                    peer.peerID = userID;
+                    peer.peerID = userID; // Attach ID
                     peersRef.current.push({ peerID: userID, peer });
                     peers.push(peer);
                 }
@@ -126,7 +135,7 @@ function App() {
         socket.on("user joined", payload => {
             const peer = addPeer(payload.signal, payload.callerID, streamRef.current);
             if(peer) {
-                peer.peerID = payload.callerID;
+                peer.peerID = payload.callerID; // Attach ID
                 peersRef.current.push({ peerID: payload.callerID, peer });
                 setPeers(users => [...users, peer]);
             }
@@ -148,7 +157,7 @@ function App() {
         return () => {
             socket.off("user left");
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const startVideo = (mode) => {
@@ -171,7 +180,7 @@ function App() {
                             if (oldTrack && newTrack) {
                                 peer.replaceTrack(oldTrack, newTrack, peer.streams[0]);
                             }
-                        } catch(e) { console.log("Track error", e); }
+                        } catch(e) { console.log(e) }
                     }
                 });
             })
@@ -188,7 +197,7 @@ function App() {
         if (joined && stream && userVideoRef.current) {
             userVideoRef.current.srcObject = stream;
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [joined, stream]);
 
     function createPeer(userToSignal, callerID, stream) {
@@ -257,8 +266,14 @@ function App() {
         return bigMe ? styles.oneOnOnePeer : { ...styles.floatingMe, left: pos.x, top: pos.y };
     };
 
-    const getPeerDragHandlers = () => bigMe ? { onDragStart: handleDragStart, onDragMove: handleDragMove, onDragEnd: handleDragEnd } : {};
-    const getMeDragHandlers = () => !bigMe ? { onDragStart: handleDragStart, onDragMove: handleDragMove, onDragEnd: handleDragEnd } : {};
+    const getDragHandlers = (isFloating) => {
+        if(!isFloating) return {};
+        return {
+            onDragStart: handleDragStart,
+            onDragMove: handleDragMove,
+            onDragEnd: handleDragEnd
+        };
+    };
 
     return (
         <div style={styles.container} onMouseMove={handleDragMove} onMouseUp={handleDragEnd}>
@@ -272,6 +287,7 @@ function App() {
             {!joined ? (
                 <div style={styles.loginContainer}>
                     <div style={styles.loginCard}>
+                        {/* --- Text Fixed --- */}
                         <h4 style={{ color: "#4CAF50", marginTop: "0", marginBottom: "10px", fontWeight: "normal", fontSize: "18px" }}>
                             Enter Name To Talk
                         </h4>
@@ -288,6 +304,7 @@ function App() {
             ) : (
                 <>
                     <div style={styles.gridContainer}>
+                        {/* PEER VIDEO */}
                         {peers.map((peer, index) => {
                             const key = peer.peerID || index;
                             return (
@@ -296,23 +313,27 @@ function App() {
                                     peer={peer}
                                     customStyle={getPeerStyle()}
                                     onClick={bigMe ? toggleView : null}
-                                    {...getPeerDragHandlers()}
+                                    {...getDragHandlers(bigMe)} 
                                 />
                             );
                         })}
+
+                        {/* ME VIDEO */}
                         <div
                             style={getMeStyle()}
                             onClick={!bigMe ? toggleView : null}
-                            onMouseDown={getMeDragHandlers().onDragStart}
-                            onTouchStart={getMeDragHandlers().onDragStart}
-                            onTouchMove={getMeDragHandlers().onDragMove}
-                            onTouchEnd={getMeDragHandlers().onDragEnd}
+                            // Attach Laptop & Mobile Events
+                            onMouseDown={getDragHandlers(!bigMe).onDragStart}
+                            onTouchStart={getDragHandlers(!bigMe).onDragStart}
+                            onTouchMove={getDragHandlers(!bigMe).onDragMove}
+                            onTouchEnd={getDragHandlers(!bigMe).onDragEnd}
                         >
                             <video muted ref={userVideoRef} autoPlay playsInline style={styles.videoElement} />
                             {!isOneOnOne && <div style={styles.nameTag}>You</div>}
                             <div style={{ ...styles.statusDot, background: micOn ? "#4CAF50" : "#f44336" }}></div>
                         </div>
                     </div>
+
                     <div style={styles.controlsBar}>
                         <button onClick={toggleMic} style={{ ...styles.controlBtn, background: micOn ? "#333" : "#ea4335" }}>
                             {micOn ? <Icons.MicOn /> : <Icons.MicOff />}
@@ -341,55 +362,10 @@ const styles = {
     loginCard: { background: "#1e1e1e", padding: "30px", borderRadius: "15px", textAlign: "center", width: "90%", maxWidth: "400px", border: "1px solid #333" },
     input: { width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #333", background: "#2c2c2c", color: "white", fontSize: "16px", marginBottom: "20px", outline: "none", boxSizing: "border-box" },
     joinBtn: { width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: "#2196F3", color: "white", fontSize: "16px", cursor: "pointer" },
-    gridContainer: { 
-        flex: 1, 
-        display: "flex", 
-        flexWrap: "wrap", 
-        justifyContent: "center", 
-        alignItems: "center", 
-        gap: "10px", 
-        padding: "10px", 
-        paddingBottom: "100px", 
-        overflowY: "auto", 
-        position: "relative" 
-    },
-    videoCard: { 
-        position: "relative", 
-        background: "#000", 
-        borderRadius: "12px", 
-        overflow: "hidden", 
-        border: "1px solid #333", 
-        maxHeight: "45vh", 
-        flex: "1 1 300px", 
-        maxWidth: "600px", 
-        aspectRatio: "1.33", 
-        minWidth: "250px" 
-    },
-    oneOnOnePeer: { 
-        position: "absolute", 
-        top: 0, 
-        left: 0, 
-        width: "100%", 
-        height: "100%", 
-        zIndex: 1, 
-        background: "#000", 
-        display: "flex", 
-        alignItems: "center", 
-        justifyContent: "center" 
-    },
-    floatingMe: { 
-        position: "fixed", 
-        width: "120px", 
-        height: "160px", 
-        borderRadius: "10px", 
-        overflow: "hidden", 
-        border: "2px solid #fff", 
-        boxShadow: "0 5px 15px rgba(0,0,0,0.5)", 
-        zIndex: 50, 
-        background: "#000",
-        cursor: "grab",
-        touchAction: "none"
-    },
+    gridContainer: { flex: 1, display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "10px", padding: "10px", paddingBottom: "100px", overflowY: "auto", position: "relative" },
+    videoCard: { position: "relative", background: "#000", borderRadius: "12px", overflow: "hidden", border: "1px solid #333", maxHeight: "45vh", flex: "1 1 300px", maxWidth: "600px", aspectRatio: "1.33", minWidth: "250px" },
+    oneOnOnePeer: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 1, background: "#000", display: "flex", alignItems: "center", justifyContent: "center" },
+    floatingMe: { position: "fixed", width: "120px", height: "160px", borderRadius: "10px", overflow: "hidden", border: "2px solid #fff", boxShadow: "0 5px 15px rgba(0,0,0,0.5)", zIndex: 50, background: "#000", cursor: "grab", touchAction: "none" },
     videoElement: { width: "100%", height: "100%", objectFit: "contain", transform: "scaleX(-1)", background: "#000" },
     nameTag: { position: "absolute", bottom: "10px", left: "10px", background: "rgba(0,0,0,0.6)", color: "white", padding: "4px 8px", borderRadius: "4px", fontSize: "12px" },
     statusDot: { position: "absolute", top: "10px", right: "10px", width: "8px", height: "8px", borderRadius: "50%" },
