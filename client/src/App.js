@@ -42,7 +42,7 @@ const Video = (props) => {
                 if (ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
             }
         }
-    }, []); // eslint-disable-line
+    }, []); 
 
     return (
         <div
@@ -78,7 +78,7 @@ function App() {
     const isLeaving = useRef(false);
 
     const userVideoRef = useRef();
-    const peersRef = useRef([]); // Isme ab hum direct PEER OBJECT store karenge
+    const peersRef = useRef([]); // Direct Peer Store
     const streamRef = useRef();
 
     const isOneOnOne = peers.length === 1;
@@ -87,29 +87,6 @@ function App() {
     const getDragHandlers = (isFloating) => {
         if(!isFloating) return {};
         return { onDragStart: handleDragStart, onDragMove: handleDragMove, onDragEnd: handleDragEnd };
-    };
-
-    // --- FLOATING IMAGES (AI Decoration) ---
-    const floatingImageUrls = [
-        "https://images.unsplash.com/photo-1616469829581-73993eb86b02?w=300&h=300&fit=crop",
-        "https://images.unsplash.com/photo-1581092921461-eab62e97a783?w=300&h=300&fit=crop",
-        "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=300&h=300&fit=crop",
-        "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=300&h=300&fit=crop"
-    ];
-
-    const getFloatingImgStyle = (index) => {
-        let baseStyle = {
-            position: 'absolute', width: '120px', height: '120px', borderRadius: '15px',
-            objectFit: 'cover', opacity: 0.6, zIndex: 1, boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-            animationDelay: `${index * 0.5}s` 
-        };
-        switch(index) {
-            case 0: return { ...baseStyle, top: '10%', left: '15%' };
-            case 1: return { ...baseStyle, top: '15%', right: '15%' };
-            case 2: return { ...baseStyle, bottom: '15%', left: '20%' };
-            case 3: return { ...baseStyle, bottom: '10%', right: '20%' };
-            default: return baseStyle;
-        }
     };
 
     // --- REFRESH PROTECTION ---
@@ -152,9 +129,8 @@ function App() {
             users.forEach(userID => {
                 const peer = createPeer(userID, socket.id, streamRef.current);
                 if(peer) {
-                    peer.peerID = userID; // ID attach kiya
-                    // CHANGE: Ab hum direct peer object push kar rahe hain (No wrapper)
-                    peersRef.current.push(peer); 
+                    peer.peerID = userID;
+                    peersRef.current.push(peer); // Direct Push
                     peers.push(peer);
                 }
             })
@@ -164,28 +140,29 @@ function App() {
         socket.on("user joined", payload => {
             const peer = addPeer(payload.signal, payload.callerID, streamRef.current);
             if(peer) {
-                peer.peerID = payload.callerID; // ID attach kiya
-                // CHANGE: Direct peer object (No wrapper)
-                peersRef.current.push(peer); 
+                peer.peerID = payload.callerID;
+                peersRef.current.push(peer); // Direct Push
                 setPeers(users => [...users, peer]);
             }
         });
 
         socket.on("receiving returned signal", payload => {
-            // FIX: Ab find directly peerID se kaam karega (kyunki wrapper hat gaya)
             const item = peersRef.current.find(p => p.peerID === payload.id);
             if (item) item.signal(payload.signal);
         });
 
+        // --- USER LEFT LOGIC (CORRECTED 100%) ---
         socket.on("user left", id => {
-            const peerObj = peersRef.current.find(p => p.peerID === id);
-            if (peerObj) {
-                peerObj.peer.destroy();
+            const peerInstance = peersRef.current.find(p => p.peerID === id);
+            if (peerInstance) {
+                peerInstance.destroy();
             }
-            const peers = peersRef.current.filter(p => p.peerID !== id);
-            peersRef.current = peers;
-            // FIX: Wrapper object se 'peer' nikal kar setPeers ko do, tabhi video hatega
-            setPeers(peers.map(p => p.peer));
+            // List se hatao
+            const filteredPeers = peersRef.current.filter(p => p.peerID !== id);
+            peersRef.current = filteredPeers;
+            
+            // ERROR WAS HERE: Ab hum '.map' nahi use karenge kyunki list pehle se 'peer' objects ki hai
+            setPeers([...filteredPeers]); 
         });
 
         return () => { 
@@ -302,35 +279,37 @@ function App() {
         <div style={styles.container} onMouseMove={handleDragMove} onMouseUp={handleDragEnd}>
             <div style={styles.header}>
                 <h2 style={{ margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "10px", fontSize: "1.2rem" }}>
-                    📹 <span style={{ fontWeight: 300 }}>AZ</span><span style={{ fontWeight: "bold" }}> Chat</span>
+                    📹 <span style={{ fontWeight: 300 }}>Abulaish</span><span style={{ fontWeight: "bold" }}> Video Chat</span>
                 </h2>
                 {joined && <div style={styles.roomBadge}>Room: {roomID}</div>}
             </div>
 
             {!joined ? (
                 <div style={styles.loginContainer}>
-                    {/* Floating Images (Step 3 Add kiya) */}
-                    {floatingImageUrls.map((url, index) => (
-                         <img 
-                            key={index} 
-                            src={url} 
-                            alt="ai-decoration" 
-                            style={getFloatingImgStyle(index)}
-                            className="floating-img"
-                        />
-                    ))}
+                    
+                    {/* --- BACKGROUND FLOATING IMAGE (Updated for your file) --- */}
+                    <img 
+                        src="/background-collage.png" 
+                        alt="Background Decoration"
+                        style={{
+                            position: 'absolute',
+                            top: '-5%', left: '-5%', width: '110%', height: '110%',
+                            objectFit: 'cover', opacity: 0.3, zIndex: 1,
+                        }}
+                        className="floating-img" 
+                    />
 
                     <div style={styles.loginCard}>
-                        <h2 style={{ color: "white", marginTop: "0", marginBottom: "10px" }}>Join Meeting</h2>
+                        <h2 style={{ color: "white", marginTop: "0", marginBottom: "10px" }}>TAlk Now </h2>
                         
                         <h4 style={{ color: "#4CAF50", marginTop: "0", marginBottom: "30px", fontWeight: "normal", fontSize: "18px" }}>
-                            Enter Name To Talk
+                            Enter Room Name To Talk
                         </h4>
                         
                         <input
                             type="text"
                             name="room"
-                            placeholder="Enter Room Name"
+                            placeholder="Enter Room Name Here"
                             onChange={(e) => setRoomID(e.target.value)}
                             style={styles.input}
                         />
@@ -396,8 +375,8 @@ const styles = {
         justifyContent: "center", 
         alignItems: "center", 
         background: "#000",
-        position: "relative", // ZAROORI: Images positioning ke liye
-        overflow: "hidden"    // ZAROORI: Scroll rokne ke liye
+        position: "relative",
+        overflow: "hidden"
     },
     loginCard: { 
         background: "#1e1e1e", 
@@ -407,7 +386,7 @@ const styles = {
         width: "90%", 
         maxWidth: "400px", 
         border: "1px solid #333",
-        zIndex: 2, // ZAROORI: Card ko images ke upar rakhne ke liye
+        zIndex: 2, 
         position: "relative"
     },
     input: { width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #333", background: "#2c2c2c", color: "white", fontSize: "16px", marginBottom: "20px", outline: "none", boxSizing: "border-box" },
