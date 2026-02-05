@@ -152,13 +152,21 @@ function App() {
 
         socket.on("user left", id => {
             const peerObj = peersRef.current.find(p => p.peerID === id);
-            if (peerObj) peerObj.peer.destroy();
+            if (peerObj) {
+                peerObj.peer.destroy();
+            }
             const peers = peersRef.current.filter(p => p.peerID !== id);
             peersRef.current = peers;
-            setPeers(peers);
+            // FIX: Wrapper object se 'peer' nikal kar setPeers ko do
+            setPeers(peers.map(p => p.peer));
         });
 
-        return () => { socket.off("user left"); };
+        return () => {
+            socket.off("user left");
+            socket.off("user joined");
+            socket.off("receiving returned signal");
+            socket.off("all users");
+        };
     }, []);
 
     const startVideo = (mode) => {
