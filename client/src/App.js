@@ -178,15 +178,14 @@ function App() {
         });
 
         socket.on("user left", id => {
-            // FIX: Video hatane ka logic ab 100% sahi hai
-            const peerInstance = peersRef.current.find(p => p.peerID === id);
-            if (peerInstance) {
-                peerInstance.destroy(); // Video stream band
+            const peerObj = peersRef.current.find(p => p.peerID === id);
+            if (peerObj) {
+                peerObj.peer.destroy();
             }
-            // List se usko hatao
             const peers = peersRef.current.filter(p => p.peerID !== id);
             peersRef.current = peers;
-            setPeers(peers); // Ab ye sahi format mein jayega
+            // FIX: Wrapper object se 'peer' nikal kar setPeers ko do, tabhi video hatega
+            setPeers(peers.map(p => p.peer));
         });
 
         return () => { 
