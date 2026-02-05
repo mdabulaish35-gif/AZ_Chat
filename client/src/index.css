@@ -11,3 +11,14 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+/* Floating Animation */
+@keyframes floatAnimation {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-60px); } /* Isko -20 se -60 kar diya (Zyada hilega) */
+  100% { transform: translateY(0px); }
+}
+
+.floating-img {
+  /* Agar speed bhi badhani hai to '6s' ko '4s' kar dein */
+  animation: floatAnimation 8s ease-in-out infinite; 
+}
