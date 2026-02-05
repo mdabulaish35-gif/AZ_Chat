@@ -42,7 +42,7 @@ const Video = (props) => {
                 if (ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
             }
         }
-    }, []); 
+    }, []); // eslint-disable-line
 
     return (
         <div
@@ -75,22 +75,47 @@ function App() {
     const [bigMe, setBigMe] = useState(false);
     const [facingMode, setFacingMode] = useState("user");
 
-    // --- NEW: Track karo ki Leave Button dabaya ya nahi ---
     const isLeaving = useRef(false);
 
     const userVideoRef = useRef();
-    const peersRef = useRef([]);
+    const peersRef = useRef([]); // Isme ab hum direct PEER OBJECT store karenge
     const streamRef = useRef();
 
     const isOneOnOne = peers.length === 1;
 
-    // --- UPDATED: REFRESH PROTECTION ---
+    // --- DRAG LOGIC ---
+    const getDragHandlers = (isFloating) => {
+        if(!isFloating) return {};
+        return { onDragStart: handleDragStart, onDragMove: handleDragMove, onDragEnd: handleDragEnd };
+    };
+
+    // --- FLOATING IMAGES (AI Decoration) ---
+    const floatingImageUrls = [
+        "https://images.unsplash.com/photo-1616469829581-73993eb86b02?w=300&h=300&fit=crop",
+        "https://images.unsplash.com/photo-1581092921461-eab62e97a783?w=300&h=300&fit=crop",
+        "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=300&h=300&fit=crop",
+        "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=300&h=300&fit=crop"
+    ];
+
+    const getFloatingImgStyle = (index) => {
+        let baseStyle = {
+            position: 'absolute', width: '120px', height: '120px', borderRadius: '15px',
+            objectFit: 'cover', opacity: 0.6, zIndex: 1, boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+            animationDelay: `${index * 0.5}s` 
+        };
+        switch(index) {
+            case 0: return { ...baseStyle, top: '10%', left: '15%' };
+            case 1: return { ...baseStyle, top: '15%', right: '15%' };
+            case 2: return { ...baseStyle, bottom: '15%', left: '20%' };
+            case 3: return { ...baseStyle, bottom: '10%', right: '20%' };
+            default: return baseStyle;
+        }
+    };
+
+    // --- REFRESH PROTECTION ---
     useEffect(() => {
         const handleBeforeUnload = (event) => {
-            // Agar Leave Button dabaya hai, to Popup mat dikhao
             if (isLeaving.current) return;
-
-            // Agar Joined hai aur galti se refresh/back kiya, to Popup dikhao
             if (joined) {
                 const message = "Are you sure you want to leave?";
                 event.returnValue = message;
@@ -101,7 +126,6 @@ function App() {
         return () => window.removeEventListener("beforeunload", handleBeforeUnload);
     }, [joined]);
 
-    // --- DRAG LOGIC ---
     const handleDragStart = () => { if (isOneOnOne) setIsDragging(true); };
     const handleDragEnd = () => { setIsDragging(false); };
     const handleDragMove = (e) => {
@@ -128,8 +152,9 @@ function App() {
             users.forEach(userID => {
                 const peer = createPeer(userID, socket.id, streamRef.current);
                 if(peer) {
-                    peer.peerID = userID; 
-                    peersRef.current.push({ peerID: userID, peer });
+                    peer.peerID = userID; // ID attach kiya
+                    // CHANGE: Ab hum direct peer object push kar rahe hain (No wrapper)
+                    peersRef.current.push(peer); 
                     peers.push(peer);
                 }
             })
@@ -139,29 +164,32 @@ function App() {
         socket.on("user joined", payload => {
             const peer = addPeer(payload.signal, payload.callerID, streamRef.current);
             if(peer) {
-                peer.peerID = payload.callerID; 
-                peersRef.current.push({ peerID: payload.callerID, peer });
+                peer.peerID = payload.callerID; // ID attach kiya
+                // CHANGE: Direct peer object (No wrapper)
+                peersRef.current.push(peer); 
                 setPeers(users => [...users, peer]);
             }
         });
 
         socket.on("receiving returned signal", payload => {
+            // FIX: Ab find directly peerID se kaam karega (kyunki wrapper hat gaya)
             const item = peersRef.current.find(p => p.peerID === payload.id);
-            if (item) item.peer.signal(payload.signal);
+            if (item) item.signal(payload.signal);
         });
 
         socket.on("user left", id => {
-            const peerObj = peersRef.current.find(p => p.peerID === id);
-            if (peerObj) {
-                peerObj.peer.destroy();
+            // FIX: Video hatane ka logic ab 100% sahi hai
+            const peerInstance = peersRef.current.find(p => p.peerID === id);
+            if (peerInstance) {
+                peerInstance.destroy(); // Video stream band
             }
+            // List se usko hatao
             const peers = peersRef.current.filter(p => p.peerID !== id);
             peersRef.current = peers;
-            // FIX: Wrapper object se 'peer' nikal kar setPeers ko do
-            setPeers(peers.map(p => p.peer));
+            setPeers(peers); // Ab ye sahi format mein jayega
         });
 
-        return () => {
+        return () => { 
             socket.off("user left");
             socket.off("user joined");
             socket.off("receiving returned signal");
@@ -177,7 +205,7 @@ function App() {
                 streamRef.current = currentStream;
                 if (userVideoRef.current) userVideoRef.current.srcObject = currentStream;
 
-                peersRef.current.forEach(({ peer }) => {
+                peersRef.current.forEach((peer) => {
                     if (peer && !peer.destroyed) {
                         try {
                             const oldTrack = peer.streams[0]?.getVideoTracks()[0];
@@ -256,9 +284,8 @@ function App() {
         }
     };
 
-    // --- UPDATED: Leave Room Function ---
     const leaveRoom = () => {
-        isLeaving.current = true; // Set flag to true (Intentional Leave)
+        isLeaving.current = true;
         window.location.reload();
     };
 
@@ -272,33 +299,39 @@ function App() {
         return bigMe ? styles.oneOnOnePeer : { ...styles.floatingMe, left: pos.x, top: pos.y };
     };
 
-    const getDragHandlers = (isFloating) => {
-        if(!isFloating) return {};
-        return { onDragStart: handleDragStart, onDragMove: handleDragMove, onDragEnd: handleDragEnd };
-    };
-
     return (
         <div style={styles.container} onMouseMove={handleDragMove} onMouseUp={handleDragEnd}>
             <div style={styles.header}>
                 <h2 style={{ margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "10px", fontSize: "1.2rem" }}>
-                    📹 <span style={{ fontWeight: 300 }}>Abulaish</span><span style={{ fontWeight: "bold" }}>Video Chat</span>
+                    📹 <span style={{ fontWeight: 300 }}>AZ</span><span style={{ fontWeight: "bold" }}> Chat</span>
                 </h2>
                 {joined && <div style={styles.roomBadge}>Room: {roomID}</div>}
             </div>
 
             {!joined ? (
                 <div style={styles.loginContainer}>
+                    {/* Floating Images (Step 3 Add kiya) */}
+                    {floatingImageUrls.map((url, index) => (
+                         <img 
+                            key={index} 
+                            src={url} 
+                            alt="ai-decoration" 
+                            style={getFloatingImgStyle(index)}
+                            className="floating-img"
+                        />
+                    ))}
+
                     <div style={styles.loginCard}>
-                        <h2 style={{ color: "white", marginTop: "0", marginBottom: "10px" }}>TAlk Now</h2>
+                        <h2 style={{ color: "white", marginTop: "0", marginBottom: "10px" }}>Join Meeting</h2>
                         
                         <h4 style={{ color: "#4CAF50", marginTop: "0", marginBottom: "30px", fontWeight: "normal", fontSize: "18px" }}>
-                            Enter Room Name To Talk
+                            Enter Name To Talk
                         </h4>
                         
                         <input
                             type="text"
                             name="room"
-                            placeholder="Enter Room Name Here"
+                            placeholder="Enter Room Name"
                             onChange={(e) => setRoomID(e.target.value)}
                             style={styles.input}
                         />
@@ -358,12 +391,28 @@ const styles = {
     container: { background: "#121212", minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "sans-serif", overflow: "hidden" },
     header: { padding: "10px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1a1a1a", borderBottom: "1px solid #333", height: "60px", zIndex: 20 },
     roomBadge: { background: "#333", color: "#fff", padding: "5px 12px", borderRadius: "20px", fontSize: "0.8rem" },
-    loginContainer: { flex: 1, display: "flex", justifyContent: "center", alignItems: "center", background: "#000" },
-    loginCard: { background: "#1e1e1e", padding: "30px", borderRadius: "15px", textAlign: "center", width: "90%", maxWidth: "400px", border: "1px solid #333" },
+    loginContainer: { 
+        flex: 1, 
+        display: "flex", 
+        justifyContent: "center", 
+        alignItems: "center", 
+        background: "#000",
+        position: "relative", // ZAROORI: Images positioning ke liye
+        overflow: "hidden"    // ZAROORI: Scroll rokne ke liye
+    },
+    loginCard: { 
+        background: "#1e1e1e", 
+        padding: "30px", 
+        borderRadius: "15px", 
+        textAlign: "center", 
+        width: "90%", 
+        maxWidth: "400px", 
+        border: "1px solid #333",
+        zIndex: 2, // ZAROORI: Card ko images ke upar rakhne ke liye
+        position: "relative"
+    },
     input: { width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #333", background: "#2c2c2c", color: "white", fontSize: "16px", marginBottom: "20px", outline: "none", boxSizing: "border-box" },
     joinBtn: { width: "100%", padding: "12px", borderRadius: "8px", border: "none", background: "#2196F3", color: "white", fontSize: "16px", cursor: "pointer" },
-    
-    // --- UPDATED GRID LAYOUT (Auto Fit) ---
     gridContainer: { 
         flex: 1, 
         display: "flex", 
@@ -382,7 +431,6 @@ const styles = {
         borderRadius: "12px", 
         overflow: "hidden", 
         border: "1px solid #333", 
-        // 40% Width ensures 2 items fit in one row (with gap)
         flex: "1 1 40%", 
         minWidth: "140px", 
         maxWidth: "600px", 
