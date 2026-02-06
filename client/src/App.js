@@ -279,7 +279,7 @@ function App() {
         <div style={styles.container} onMouseMove={handleDragMove} onMouseUp={handleDragEnd}>
             <div style={styles.header}>
                 <h2 style={{ margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: "10px", fontSize: "1.2rem" }}>
-                    📹 <span style={{ fontWeight: 300 }}>Abulaish</span><span style={{ fontWeight: "bold" }}> Video Chat</span>
+                    📹 <span style={{ fontWeight: 300 }}>A_Z</span><span style={{ fontWeight: "bold" }}> Video Chat</span>
                 </h2>
                 {joined && <div style={styles.roomBadge}>Room: {roomID}</div>}
             </div>
