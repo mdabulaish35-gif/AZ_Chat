@@ -42,7 +42,7 @@ const Video = (props) => {
                 if (ref.current) ref.current.srcObject = props.peer._remoteStreams[0];
             }
         }
-    }, []); 
+    }, [props.peer]); 
 
     return (
         <div
@@ -130,7 +130,7 @@ function App() {
                 const peer = createPeer(userID, socket.id, streamRef.current);
                 if(peer) {
                     peer.peerID = userID;
-                    peersRef.current.push(peer); // Direct Push
+                    peersRef.current.push(peer);
                     peers.push(peer);
                 }
             })
@@ -138,11 +138,15 @@ function App() {
         });
 
         socket.on("user joined", payload => {
+            // FIX 1: Duplicate User Check (Ye line duplicates rokti hai)
+            const alreadyExists = peersRef.current.find(p => p.peerID === payload.callerID);
+            if (alreadyExists) return;
+
             const peer = addPeer(payload.signal, payload.callerID, streamRef.current);
             if(peer) {
                 peer.peerID = payload.callerID;
-                peersRef.current.push(peer); // Direct Push
-                setPeers(users => [...users, peer]);
+                peersRef.current.push(peer);
+                setPeers(prevPeers => [...prevPeers, peer]);
             }
         });
 
@@ -152,22 +156,23 @@ function App() {
         });
 
         socket.on("user left", id => {
-            console.log("User Left ID:", id); // <-- Ye console mein dikhna chahiye
+            console.log("User Left ID:", id); // Debug Log
 
-            // 1. Connection Todna (Ref se)
+            // FIX 2: Peer ko dhoondh ke destroy karo
             const peerObj = peersRef.current.find(p => p.peerID === id);
             if (peerObj) {
-                 peerObj.destroy();
+                try {
+                    peerObj.destroy();
+                } catch(e) { console.error("Peer destroy error:", e); }
             }
 
-            // 2. Ref List Update Karna
+            // List ko filter karo
             const filteredPeers = peersRef.current.filter(p => p.peerID !== id);
             peersRef.current = filteredPeers;
 
-            // 3. Screen Update Karna (Sabse Important Fix)
-            // Hum purane state (prevPeers) ko lekar filter kar rahe hain
+            // FIX 3: State update karke video hatao
             setPeers(prevPeers => prevPeers.filter(peer => peer.peerID !== id));
-     }); 
+        });
 
         return () => { 
             socket.off("user left");
@@ -290,8 +295,6 @@ function App() {
 
             {!joined ? (
                 <div style={styles.loginContainer}>
-                    
-                    {/* --- BACKGROUND FLOATING IMAGE (Updated for your file) --- */}
                     <img 
                         src="/background-collage.png" 
                         alt="Background Decoration"
@@ -323,19 +326,22 @@ function App() {
             ) : (
                 <>
                     <div style={styles.gridContainer}>
-                        {peers.map((peer) => { // <-- Index ki zaroorat hi nahi hai
-                        // Safety Check: Agar ID nahi hai to mat dikhao
+                        {peers.map((peer) => {
+                            // Check: ID hona zaroori hai
                             if (!peer.peerID) return null; 
 
-                             return (
+                            return (
                                 <Video 
-                                     key={peer.peerID} // <--- YEH SAHI HAI (Unique ID)
+                                    key={peer.peerID} // FIX: Index nahi, ID use kiya hai
                                     peer={peer} 
                                     customStyle={getPeerStyle()} 
-                                // ...baki code same rakhein
-                            />
-                        );
-                    })}
+                                    onDragStart={getDragHandlers(isOneOnOne && bigMe).onDragStart}
+                                    onDragMove={getDragHandlers(isOneOnOne && bigMe).onDragMove}
+                                    onDragEnd={getDragHandlers(isOneOnOne && bigMe).onDragEnd}
+                                    onClick={bigMe ? toggleView : null}
+                                />
+                            );
+                        })}
                         <div
                             style={getMeStyle()}
                             onClick={!bigMe ? toggleView : null}
