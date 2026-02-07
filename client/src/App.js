@@ -2,10 +2,21 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 
-// --- 1. CRASH GUARD ---
+// --- 1. CRASH GUARD (UPDATED) ---
 if (typeof window !== 'undefined') {
     window.global = window;
-    window.process = window.process || { env: { NODE_DEBUG: undefined } };
+    
+    // Fix: Browser ko 'process' aur 'nextTick' sikha rahe hain
+    window.process = window.process || {};
+    window.process.env = window.process.env || { NODE_DEBUG: undefined };
+    
+    // Agar nextTick nahi hai, to setTimeout use karo (Ye line error hatayegi)
+    if (!window.process.nextTick) {
+        window.process.nextTick = function (callback) {
+            setTimeout(callback, 0);
+        };
+    }
+
     try {
         window.Buffer = window.Buffer || require("buffer").Buffer;
     } catch (e) {
@@ -15,6 +26,8 @@ if (typeof window !== 'undefined') {
 
 // --- 2. LOAD PEER ---
 const Peer = require("simple-peer");
+
+// ... baaki code same rahega ...
 
 // Render Link
 const socket = io.connect("https://az-chat.onrender.com");
