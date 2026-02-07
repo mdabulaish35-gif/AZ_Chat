@@ -151,19 +151,23 @@ function App() {
             if (item) item.signal(payload.signal);
         });
 
-        // --- USER LEFT LOGIC (CORRECTED 100%) ---
         socket.on("user left", id => {
-            const peerInstance = peersRef.current.find(p => p.peerID === id);
-            if (peerInstance) {
-                peerInstance.destroy();
+            console.log("User Left ID:", id); // <-- Ye console mein dikhna chahiye
+
+            // 1. Connection Todna (Ref se)
+            const peerObj = peersRef.current.find(p => p.peerID === id);
+            if (peerObj) {
+                 peerObj.destroy();
             }
-            // List se hatao
+
+            // 2. Ref List Update Karna
             const filteredPeers = peersRef.current.filter(p => p.peerID !== id);
             peersRef.current = filteredPeers;
-            
-            // ERROR WAS HERE: Ab hum '.map' nahi use karenge kyunki list pehle se 'peer' objects ki hai
-            setPeers([...filteredPeers]); 
-        });
+
+            // 3. Screen Update Karna (Sabse Important Fix)
+            // Hum purane state (prevPeers) ko lekar filter kar rahe hain
+            setPeers(prevPeers => prevPeers.filter(peer => peer.peerID !== id));
+     }); 
 
         return () => { 
             socket.off("user left");
@@ -319,18 +323,19 @@ function App() {
             ) : (
                 <>
                     <div style={styles.gridContainer}>
-                        {peers.map((peer, index) => {
-                            const key = peer.peerID || index;
-                            return (
-                                <Video
-                                    key={key}
-                                    peer={peer}
-                                    customStyle={getPeerStyle()}
-                                    onClick={bigMe ? toggleView : null}
-                                    {...getDragHandlers(bigMe)} 
-                                />
-                            );
-                        })}
+                        {peers.map((peer) => { // <-- Index ki zaroorat hi nahi hai
+                        // Safety Check: Agar ID nahi hai to mat dikhao
+                            if (!peer.peerID) return null; 
+
+                             return (
+                                <Video 
+                                     key={peer.peerID} // <--- YEH SAHI HAI (Unique ID)
+                                    peer={peer} 
+                                    customStyle={getPeerStyle()} 
+                                // ...baki code same rakhein
+                            />
+                        );
+                    })}
                         <div
                             style={getMeStyle()}
                             onClick={!bigMe ? toggleView : null}
